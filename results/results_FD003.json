@@ -1,0 +1,232 @@
+{
+ "subset": "FD003",
+ "constants": {
+  "window": 30,
+  "horizon_N": 30,
+  "quantiles": [
+   0.1,
+   0.5,
+   0.9
+  ],
+  "split": [
+   0.7,
+   0.15,
+   0.15
+  ],
+  "seed": 20261102,
+  "bootstrap": 2000
+ },
+ "schema": {
+  "train": {
+   "rows_in": 24720,
+   "units_in": 100,
+   "units_rejected": {},
+   "units_out": 100,
+   "rows_out": 24720
+  },
+  "test": {
+   "rows_in": 16596,
+   "units_in": 100,
+   "units_rejected": {},
+   "units_out": 100,
+   "rows_out": 16596
+  }
+ },
+ "constant_channels_excluded": [
+  "op3",
+  "s1",
+  "s18",
+  "s19"
+ ],
+ "n_features": 61,
+ "baselines": {
+  "B1_constant": 137.3218511394766,
+  "B2_median_lifetime": 220.5
+ },
+ "tuning": {
+  "candidates": [
+   {
+    "params": {
+     "max_iter": 300,
+     "learning_rate": 0.05,
+     "max_leaf_nodes": 31
+    },
+    "tune_pinball_q50": 22.319768088275094,
+    "tune_rmse_q50": 69.41615979659551
+   },
+   {
+    "params": {
+     "max_iter": 600,
+     "learning_rate": 0.05,
+     "max_leaf_nodes": 31
+    },
+    "tune_pinball_q50": 22.29839597136792,
+    "tune_rmse_q50": 69.00380681407803
+   },
+   {
+    "params": {
+     "max_iter": 300,
+     "learning_rate": 0.1,
+     "max_leaf_nodes": 31
+    },
+    "tune_pinball_q50": 22.447216713596436,
+    "tune_rmse_q50": 69.22568256936763
+   },
+   {
+    "params": {
+     "max_iter": 600,
+     "learning_rate": 0.1,
+     "max_leaf_nodes": 31
+    },
+    "tune_pinball_q50": 22.237656300761486,
+    "tune_rmse_q50": 68.4461696455896
+   },
+   {
+    "params": {
+     "max_iter": 400,
+     "learning_rate": 0.08,
+     "max_leaf_nodes": 63
+    },
+    "tune_pinball_q50": 21.817873904363605,
+    "tune_rmse_q50": 68.0501216330003
+   }
+  ],
+  "selected": {
+   "params": {
+    "max_iter": 400,
+    "learning_rate": 0.08,
+    "max_leaf_nodes": 63
+   },
+   "tune_pinball_q50": 21.817873904363605,
+   "tune_rmse_q50": 68.0501216330003
+  },
+  "note": "selected on tune split only; shared across quantile heads"
+ },
+ "weighting_sensitivity": {
+  "unit_balanced_tune_rmse": 68.0501216330003,
+  "unweighted_tune_rmse": 67.2422217907763,
+  "note": "sensitivity run on tune split; unit-balanced kept as proposed default"
+ },
+ "postprocess_replay": {
+  "raw_negative_row_rate": 0.0008925914906277894,
+  "raw_crossing_row_rate": 0.262719428741446
+ },
+ "replay": {
+  "units": 15,
+  "rows": 3361,
+  "rmse_all": 54.03380104792251,
+  "banded_rmse": {
+   "0-30": {
+    "n": 465,
+    "rmse": 4.340928461599239
+   },
+   "31-75": {
+    "n": 675,
+    "rmse": 17.13036131064369
+   },
+   "76-130": {
+    "n": 825,
+    "rmse": 33.780201585939096
+   },
+   ">130": {
+    "n": 1396,
+    "rmse": 78.78327733703621
+   }
+  },
+  "envelope_flag_rate": 0.0032728354656352274,
+  "band": {
+   "nominal": 0.8,
+   "coverage_mean": 0.45566929624051294,
+   "coverage_ci": [
+    0.31340536439235694,
+    0.5885592393214344
+   ],
+   "width_mean": 33.49499313407294,
+   "width_ci": [
+    26.147792781712386,
+    43.59945263844371
+   ],
+   "population": "per unit first, equal-unit average, unit bootstrap CI"
+  },
+  "warning": {
+   "horizon_N": 30,
+   "units": 15,
+   "catch_fraction": 0.4666666666666667,
+   "premature_unit_fraction": 0.5333333333333333,
+   "miss_fraction": 0.0,
+   "lead_time_cycles": {
+    "n": 7,
+    "median": 27.0,
+    "p10": 24.2,
+    "p90": 29.0
+   },
+   "per_cycle_fpr": 0.011395027624309393,
+   "latched_alert_burden": {
+    "units_ever_alerting_fraction": 1.0,
+    "mean_alerted_cycles_per_unit": 29.533333333333335
+   },
+   "policy": "exclusive first-alert episode policy (declared, not universal); per-cycle FPR and latched burden are different quantities"
+  }
+ },
+ "postprocess_test": {
+  "raw_negative_row_rate": 0.0,
+  "raw_crossing_row_rate": 0.29
+ },
+ "test": {
+  "units": 100,
+  "model_endpoint_rmse": 21.297670836045754,
+  "model_endpoint_mae": 14.666469629224812,
+  "model_phm_score": 3705.1092831890915,
+  "vs_B1": {
+   "rmse_model": 21.297670836045754,
+   "rmse_baseline": 74.55083597600911,
+   "diff_mean": 53.30756259668802,
+   "ci": [
+    44.054989311682974,
+    62.998860753213656
+   ],
+   "excludes_zero": true
+  },
+  "vs_B2": {
+   "rmse_model": 21.297670836045754,
+   "rmse_baseline": 48.353231536268595,
+   "diff_mean": 26.86911239106361,
+   "ci": [
+    18.96196109551967,
+    35.168205529339915
+   ],
+   "excludes_zero": true
+  },
+  "endpoint_coverage": 0.54,
+  "endpoint_width_mean": 25.482497671324673
+ },
+ "verdicts": {
+  "model_vs_baselines": "accepted",
+  "band_quality": "see replay band coverage vs nominal 0.80 - reported separately, not implied by RMSE",
+  "warning_quality": "see replay warning episode metrics - reported separately, not implied by RMSE",
+  "note": "three verdicts stand separately; official test scored once; post-test changes would be exploratory only"
+ },
+ "runtime_seconds": 51.8,
+ "descriptive_additions": {
+  "replay_baselines_same_population": {
+   "B1_rmse": 85.15290972094846,
+   "B2_rmse": 71.15263931104941,
+   "model_rmse": 54.03380104792251,
+   "population": "replay-holdout rows, identical for all three"
+  },
+  "endpoint_band": {
+   "coverage_mean": 0.54,
+   "coverage_ci": [
+    0.44,
+    0.64
+   ],
+   "width_mean": 25.482497671324676,
+   "width_ci": [
+    21.6333859050315,
+    30.136246616528545
+   ],
+   "population": "one endpoint per unit, unit bootstrap CI"
+  }
+ },
+ "descriptive_additions_note": "computed from frozen stored predictions only; no retraining, no reselection, official test not re-scored"
+}

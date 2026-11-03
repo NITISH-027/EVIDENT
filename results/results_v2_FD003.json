@@ -1,0 +1,202 @@
+{
+ "subset": "FD003",
+ "v2": true,
+ "calibration": {
+  "method": "empirical split-conformal-style calibration on tune rows",
+  "nominal": 0.8,
+  "global_offset": 58.67422702576468,
+  "stratified_offsets": {
+   "0-30": {
+    "n": 524,
+    "offset": 1.9861191927980109
+   },
+   "31-75": {
+    "n": 620,
+    "offset": 4.6984608922668585
+   },
+   "76-130": {
+    "n": 879,
+    "offset": 26.862301402595904
+   },
+   ">130": {
+    "n": 2179,
+    "offset": 98.80406646997474
+   }
+  },
+  "n_tune_rows": 4202,
+  "caveat": "no coverage guarantee: calibration shares the tune split with v1 hyperparameter selection; all coverage numbers are empirical measurements on named splits, not guaranteed rates"
+ },
+ "post_hoc_notice": "post-hoc evaluation on replay/test: method chosen after v1 results on this split were known; not an untouched confirmation",
+ "tune_calibration_global": {
+  "coverage_equal_unit": 0.8478816774155984,
+  "width_equal_unit": 154.18565374697263,
+  "label": "in-sample on the calibration rows; optimistic by construction"
+ },
+ "tune_crossfitted_global": {
+  "n_units": 15,
+  "coverage_equal_unit": 0.8464212548007187,
+  "width_equal_unit": 154.8952250023054,
+  "design": "leave-one-unit-out within the tune split; empirical, same development sample that selected v1 hyperparameters"
+ },
+ "tune_calibration_stratified": {
+  "coverage_equal_unit": 0.8341668576032952,
+  "width_equal_unit": 147.0159706874849,
+  "label": "in-sample on the calibration rows; optimistic by construction"
+ },
+ "tune_crossfitted_stratified": {
+  "n_units": 15,
+  "coverage_equal_unit": 0.8238538946218777,
+  "width_equal_unit": 146.13475847042042,
+  "design": "leave-one-unit-out within the tune split; empirical, same development sample that selected v1 hyperparameters"
+ },
+ "selected_variant": "global",
+ "selection_rule": "stratified only if cross-fitted coverage >= global + 2pts and width <= global * 1.10; fixed before measurement",
+ "replay_band_v2": {
+  "variant": "global",
+  "coverage_equal_unit": 0.9173512815361958,
+  "coverage_ci": [
+   0.8430713450924576,
+   0.9817490494296578
+  ],
+  "width_equal_unit": 150.8434471856023,
+  "width_ci": [
+   143.4962468332418,
+   160.94790668997305
+  ],
+  "v1_coverage_equal_unit": 0.45566929624051294,
+  "v1_width_equal_unit": 33.49499313407294,
+  "label": "post-hoc evaluation on replay-holdout: method chosen after v1 results on this split were known; not an untouched confirmation"
+ },
+ "test_endpoint_band_v2": {
+  "coverage": 1.0,
+  "width_mean": 142.83095172285402,
+  "v1_coverage": 0.54,
+  "v1_width_mean": 25.482497671324673,
+  "label": "post-hoc evaluation on official test endpoints: method chosen after v1 results on this split were known; not an untouched confirmation"
+ },
+ "warning_policy_selection": {
+  "registry": "P0 v1_q50, P1 q90 (raw, uncalibrated), P2 calibrated_lower, P3 persistence_3; registry timeline in evaluate_v2.py docstring; P1 omitted from the note sent to parent - disclosed expansion; P3 added in run 2 after run-1 replay numbers were seen",
+  "candidates_tune": {
+   "v1_q50": {
+    "horizon_N": 30,
+    "units": 15,
+    "catch_fraction": 0.4,
+    "premature_unit_fraction": 0.6,
+    "miss_fraction": 0.0,
+    "lead_time_cycles": {
+     "n": 6,
+     "median": 28.0,
+     "p10": 25.0,
+     "p90": 29.5
+    },
+    "per_cycle_fpr": 0.00776023548300776,
+    "latched_alert_burden": {
+     "units_ever_alerting_fraction": 1.0,
+     "mean_alerted_cycles_per_unit": 31.733333333333334
+    },
+    "policy": "exclusive first-alert episode policy (declared, not universal); per-cycle FPR and latched burden are different quantities"
+   },
+   "q90": {
+    "horizon_N": 30,
+    "units": 15,
+    "catch_fraction": 0.8,
+    "premature_unit_fraction": 0.2,
+    "miss_fraction": 0.0,
+    "lead_time_cycles": {
+     "n": 12,
+     "median": 27.5,
+     "p10": 22.0,
+     "p90": 29.9
+    },
+    "per_cycle_fpr": 0.0016055659620016055,
+    "latched_alert_burden": {
+     "units_ever_alerting_fraction": 1.0,
+     "mean_alerted_cycles_per_unit": 27.533333333333335
+    },
+    "policy": "exclusive first-alert episode policy (declared, not universal); per-cycle FPR and latched burden are different quantities"
+   },
+   "calibrated_lower": {
+    "horizon_N": 30,
+    "units": 15,
+    "catch_fraction": 0.0,
+    "premature_unit_fraction": 1.0,
+    "miss_fraction": 0.0,
+    "lead_time_cycles": {
+     "n": 0,
+     "median": null,
+     "p10": null,
+     "p90": null
+    },
+    "per_cycle_fpr": 0.30345196681830344,
+    "latched_alert_burden": {
+     "units_ever_alerting_fraction": 1.0,
+     "mean_alerted_cycles_per_unit": 106.6
+    },
+    "policy": "exclusive first-alert episode policy (declared, not universal); per-cycle FPR and latched burden are different quantities"
+   },
+   "persistence_3": {
+    "horizon_N": 30,
+    "units": 15,
+    "catch_fraction": 0.6666666666666666,
+    "premature_unit_fraction": 0.3333333333333333,
+    "miss_fraction": 0.0,
+    "lead_time_cycles": {
+     "n": 10,
+     "median": 27.0,
+     "p10": 22.9,
+     "p90": 30.0
+    },
+    "per_cycle_fpr": 0.002675943270002676,
+    "latched_alert_burden": {
+     "units_ever_alerting_fraction": 1.0,
+     "mean_alerted_cycles_per_unit": 29.4
+    },
+    "policy": "exclusive first-alert episode policy (declared, not universal); per-cycle FPR and latched burden are different quantities"
+   }
+  },
+  "v1_tune_catch": 0.4,
+  "v1_tune_premature": 0.6,
+  "selected": "q90",
+  "note": "selected on tune by predeclared rule",
+  "rule": "tune catch >= v1 tune catch, then min tune premature, tie-break max median lead"
+ },
+ "replay_warning_v2": {
+  "horizon_N": 30,
+  "units": 15,
+  "catch_fraction": 0.7333333333333333,
+  "premature_unit_fraction": 0.26666666666666666,
+  "miss_fraction": 0.0,
+  "lead_time_cycles": {
+   "n": 11,
+   "median": 25.0,
+   "p10": 22.0,
+   "p90": 29.0
+  },
+  "per_cycle_fpr": 0.0017265193370165745,
+  "latched_alert_burden": {
+   "units_ever_alerting_fraction": 1.0,
+   "mean_alerted_cycles_per_unit": 25.666666666666668
+  },
+  "policy": "q90",
+  "v1_warning": {
+   "horizon_N": 30,
+   "units": 15,
+   "catch_fraction": 0.4666666666666667,
+   "premature_unit_fraction": 0.5333333333333333,
+   "miss_fraction": 0.0,
+   "lead_time_cycles": {
+    "n": 7,
+    "median": 27.0,
+    "p10": 24.2,
+    "p90": 29.0
+   },
+   "per_cycle_fpr": 0.011395027624309393,
+   "latched_alert_burden": {
+    "units_ever_alerting_fraction": 1.0,
+    "mean_alerted_cycles_per_unit": 29.533333333333335
+   },
+   "policy": "exclusive first-alert episode policy (declared, not universal); per-cycle FPR and latched burden are different quantities"
+  },
+  "label": "post-hoc evaluation on replay-holdout: method chosen after v1 results on this split were known; not an untouched confirmation"
+ }
+}

@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+{% block title %}{{ s.subset }} Unit {{ s.unit }} - Replay Cycle {{ s.cycle }}{% endblock %}
+{% block content %}
+{% if s.play and s.next %}
+  <meta http-equiv="refresh" content="1;url=/unit/{{ s.subset }}/{{ s.unit }}?cycle={{ s.next }}&play=1{% if s.show_truth %}&show_truth=1{% endif %}{% if s.version == 'v2' %}&version=v2{% endif %}{% if s.band_v2 %}&band=v2{% endif %}">
+{% endif %}
+
+<div class="page-container">
+  <div class="evidence-header">
+    <div class="unit-hero">
+      <h1 style="font-size: var(--text-lg); font-weight: 700; margin: 0;">
+        {{ s.subset }} unit {{ s.unit }} - replay at cycle {{ s.cycle }} of {{ s.max_cycle }}
+      </h1>
+      <span class="policy-badge {% if s.exploratory %}v2-exploratory{% else %}v1-stable{% endif %}">
+        {% if s.exploratory %}v2 exploratory{% else %}v1 stable{% endif %}
+      </span>
+    </div>
+
+    <!-- Stepper and Replay Navigation Links -->
+    <div class="step-controls">
+      <a href="/?subset={{ s.subset }}{% if s.version == 'v2' %}&version=v2{% endif %}" class="btn">&larr; Fleet Review</a>
+      {% if s.prev %}
+        <a href="/unit/{{ s.subset }}/{{ s.unit }}?cycle={{ s.prev }}{{ nav }}" class="btn">&larr; previous cycle</a>
+      {% endif %}
+      {% if s.next %}
+        <a href="/unit/{{ s.subset }}/{{ s.unit }}?cycle={{ s.next }}{{ nav }}" class="btn">next cycle &rarr;</a>
+      {% endif %}
+      <a href="/unit/{{ s.subset }}/{{ s.unit }}{% if s.version == 'v2' %}?version=v2{% endif %}{% if s.band_v2 %}{{ '&band=v2' if s.version == 'v2' else '?band=v2' }}{% endif %}" class="btn">latest</a>
+      {% if s.play %}
+        <a href="/unit/{{ s.subset }}/{{ s.unit }}?cycle={{ s.cycle }}{{ nav }}" class="btn btn-primary">stop stream</a>
+      {% else %}
+        <a href="/unit/{{ s.subset }}/{{ s.unit }}?cycle=1&play=1{{ nav }}" class="btn">play stream from cycle 1</a>
+      {% endif %}
+      <a href="/quality/{{ s.subset }}/{{ s.unit }}{% if s.version == 'v2' %}?version=v2{% endif %}" class="btn">quality gate</a>
+    </div>
+  </div>
+
+  {% if s.defaulted %}
+    <div class="caveat-box">
+      Default demo view: the first-flag cycle (the first cycle where predicted remaining &le; {{ horizon }}), so the demo starts at the decision point, not at end of life. Step backward/forward to review the trajectory before deciding.
+    </div>
+  {% endif %}
+
+  <!-- Forecast Summary Card -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Forecast at cycle {{ s.cycle }}</div>
+      <div>
+        {% if s.flag %}
+          <span class="chip chip-flag">WARNING FLAG</span>
+        {% else %}
+          <span class="chip chip-ok">NO FLAG</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <div style="font-size: var(--text-base); line-height: 1.6;">
+      <b>Forecast at cycle {{ s.cycle }}:</b> median remaining <b>{{ s.q50 }}</b> cycles,
+      band 
+      {% if s.band_v2 and s.q10_v2 is not none %}
+        [{{ s.q10_v2 }}, {{ s.q90_v2 }}]
+        <span class="honesty-notice">(v2 calibrated band: empirical tune-split calibration, no coverage guarantee; post-hoc replay coverage {{ v2band.coverage }}% at width {{ v2band.width }} vs v1 {{ v2band.v1_coverage }}% at width {{ v2band.v1_width }} - exploratory, not a probability)</span>
+      {% else %}
+        [{{ s.q10 }}, {{ s.q90 }}]
+        <span class="honesty-notice">(v1 band: nominal 80%; measured coverage on held-out replay: {{ cov }}% - too narrow as fitted, treat as indicative, not a probability)</span>
+      {% endif %}.
+
+      {% if s.flag %}
+        <div class="caveat-box" style="margin-top: 0.5rem; background: var(--flag-amber-bg); border-left-color: var(--flag-amber); color: var(--flag-amber);">
+          <span class="flag">WARNING FLAG: predicted remaining life &le; {{ horizon }} cycles ({{ s.flag_policy }}).</span>
+          <div>This is a threshold flag, not a failure probability.</div>
+        </div>
+      {% endif %}
+
+      <div class="honesty-notice" style="margin-top: 0.5rem;">
+        Policy view: <b>{{ s.flag_policy }}</b>.
+        {% if s.version == "v1" %}
+          <a href="?cycle={{ s.cycle }}&version=v2{% if s.band_v2 %}&band=v2{% endif %}" style="color:var(--accent-blue);">switch to v2 exploratory policy</a>
+        {% else %}
+          <a href="?cycle={{ s.cycle }}{% if s.band_v2 %}&band=v2{% endif %}" style="color:var(--accent-blue);">switch to v1 stable policy</a>
+        {% endif %}
+      </div>
+
+      {% if s.limited %}
+        <div class="caveat-box">Limited history: fewer than 30 observed cycles; window features use available history.</div>
+      {% endif %}
+      {% if s.envelope %}
+        <div class="caveat-box">Outside training envelope (descriptive min/max screen per feature - not a validated out-of-distribution detector). Prediction still shown; treat with extra caution.</div>
+      {% endif %}
+    </div>
+
+    <!-- Band Switcher Links -->
+    {% if v2band %}
+      <div class="honesty-notice" style="margin-top: var(--space-2); padding-top: var(--space-2); border-top: 1px solid var(--border-muted);">
+        Band shown:
+        {% if s.band_v2 %}
+          <b>v2 calibrated band</b> (empirical tune-split calibration, no coverage guarantee; post-hoc replay coverage {{ v2band.coverage }}% at width {{ v2band.width }} vs v1 {{ v2band.v1_coverage }}% at width {{ v2band.v1_width }}).
+          <a href="?cycle={{ s.cycle }}{% if s.show_truth %}&show_truth=1{% endif %}{% if s.version == 'v2' %}&version=v2{% endif %}" style="color:var(--accent-blue);">show v1 band</a>
+        {% else %}
+          <b>v1 band</b> (post-hoc replay coverage {{ v2band.v1_coverage }}% at width {{ v2band.v1_width }}).
+          <a href="?cycle={{ s.cycle }}{% if s.show_truth %}&show_truth=1{% endif %}&band=v2{% if s.version == 'v2' %}&version=v2{% endif %}" style="color:var(--accent-blue);">show v2 calibrated band</a>
+          (post-hoc replay coverage {{ v2band.coverage }}% at width {{ v2band.width }}; wider band - tradeoff, see scoreboard)
+        {% endif %}
+      </div>
+    {% endif %}
+
+    <!-- Retrospective Ground Truth Toggle Link -->
+    <div style="margin-top: var(--space-2);">
+      {% if s.show_truth %}
+        <a href="/unit/{{ s.subset }}/{{ s.unit }}?cycle={{ s.cycle }}{{ nav }}" class="btn" style="color:var(--chart-truth);">hide ground truth</a>
+        <div class="caveat-box" style="display:inline-block; margin-left:0.5rem;">
+          RETROSPECTIVE ground truth shown - evaluation overlay only; never visible during engineer review.
+        </div>
+      {% else %}
+        <a href="/unit/{{ s.subset }}/{{ s.unit }}?cycle={{ s.cycle }}&show_truth=1{{ nav }}" class="btn">
+          show retrospective ground truth (evaluation overlay)
+        </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Primary RUL Chart Card -->
+  <div class="chart-container">
+    <div class="chart-header-row">
+      <span style="font-weight:600; font-size:var(--text-base);">RUL Forecast Replay Trajectory</span>
+      <span style="font-size:var(--text-xs); color:var(--text-dim);">Replay to cycle {{ s.cycle }}</span>
+    </div>
+
+    <!-- Interactive SVG canvas if JS enabled; fallback PNG below -->
+    <div id="unit-rul-svg-wrap" class="chart-canvas-wrap"></div>
+    <div id="rul-chart-readout" class="chart-readout"></div>
+
+    <noscript>
+      <img src="/chart/rul/{{ s.subset }}/{{ s.unit }}/{{ s.cycle }}.png?x=1{% if s.show_truth %}&show_truth=1{% endif %}{% if s.band_v2 %}&band=v2{% endif %}{% if s.version == 'v2' %}&version=v2{% endif %}" style="max-width:100%; border-radius:4px;" alt="RUL Trajectory Chart">
+    </noscript>
+  </div>
+
+  <!-- Sensor Trend Signals Evidence Card -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <h3>{% if s.flag %}Warning evidence card{% else %}Review card (no flag raised){% endif %}</h3>
+      </div>
+    </div>
+
+    {% if not s.flag %}
+      <div class="caveat-box">
+        No warning flag at this cycle. A quiet display is not a health guarantee; if an engineer has a concern the model may have missed, review the trend signals below and log a verdict.
+      </div>
+    {% endif %}
+
+    <p style="font-size:var(--text-xs); color:var(--text-muted); margin-bottom:var(--space-3);">
+      Sensor channels selected as trend and context signals for this flag. Any channel ranking is a model association with the prediction, never evidence of physical cause in the machine.
+    </p>
+
+    <div id="unit-sensors-svg-wrap"></div>
+    <noscript>
+      <img src="/chart/sensors/{{ s.subset }}/{{ s.unit }}/{{ s.cycle }}.png{% if s.show_truth %}?show_truth=1{% endif %}" style="max-width:100%; border-radius:4px;" alt="Sensor Trend Signals">
+    </noscript>
+  </div>
+
+  <!-- Illustrative Economics (Assumption Placeholders) -->
+  <details class="card">
+    <summary style="font-size:var(--text-sm); font-weight:600; cursor:pointer;">
+      Illustrative economics (assumption placeholders, not measured savings)
+    </summary>
+    <div style="margin-top:var(--space-3);">
+      <table class="data-table" style="max-width:600px;">
+        <tr><th>Quantity</th><th>Placeholder value</th><th>Status</th></tr>
+        <tr><td>Planned inspection within flagged window</td><td>1 cost unit</td><td>assumption, set in config</td></tr>
+        <tr><td>Unplanned failure (missed catch)</td><td>25 cost units</td><td>assumption, set in config</td></tr>
+      </table>
+      <p class="honesty-notice" style="margin-top:0.5rem;">
+        These numbers frame the act-early vs act-late trade-off for discussion. They are unsourced placeholders, not vendor data, not measured on this fleet, and no downtime or cost savings are claimed from the warning statistics.
+      </p>
+    </div>
+  </details>
+
+  <!-- Review Verdict Verification -->
+  <div class="verdict-actions-card">
+    <div class="card-header">
+      <div class="card-title">Engineer Verification (Opinion)</div>
+    </div>
+    
+    <div id="verdict-confirmation-live" class="confirmation-live" aria-live="polite"></div>
+
+    <form id="engineer-verdict-form" method="post" action="/verify">
+      <input type="hidden" name="subset" value="{{ s.subset }}">
+      <input type="hidden" name="unit" value="{{ s.unit }}">
+      <input type="hidden" name="cycle" value="{{ s.cycle }}">
+      <input type="hidden" name="policy" value="{{ s.policy_name }}">
+      <input type="hidden" name="version" value="{{ s.version }}">
+
+      <div class="verdict-buttons-row">
+        <b>Engineer verification:</b>
+        <button type="submit" name="verdict" value="reviewed_warrants_inspection" class="btn-warrant">
+          Reviewed - warrants inspection
+        </button>
+        <button type="submit" name="verdict" value="reviewed_dismissed" class="btn-dismiss">
+          Reviewed - dismissed
+        </button>
+      </div>
+      <div class="honesty-notice" style="margin-top:0.5rem;">
+        (opinion: a human review verdict is logged to the audit trail; sensor trends are model associations, they do not confirm physical degradation; advisory only - no machine action is commanded)
+      </div>
+    </form>
+
+    <div style="margin-top: var(--space-3); border-top: 1px solid var(--border-muted); padding-top: var(--space-2);">
+      <span style="font-size: var(--text-xs); font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">Past review verdicts on this unit:</span>
+      <div id="past-verdicts-list">
+        <span style="font-size: 0.75rem; color: var(--text-dim);">Loading past verdicts...</span>
+      </div>
+    </div>
+
+    <!-- Free-text notes -->
+    <div class="notes-container">
+      <span style="font-size: var(--text-xs); font-weight: 600; color: var(--text-muted);">Engineer Note (free text, not part of audit evidence):</span>
+      <div id="engineer-notes-list"></div>
+      <form id="engineer-note-form" class="note-form">
+        <input type="text" id="note-text-input" class="note-input" placeholder="Add engineering review note (max 500 chars)..." maxlength="500">
+        <button type="submit" class="btn">Add Note</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', async () => {
+    // Render interactive chart on standalone unit page
+    try {
+      const resp = await fetch('/api/unit/{{ s.subset }}/{{ s.unit }}?cycle={{ s.cycle }}&version={{ s.version }}{% if s.band_v2 %}&band=v2{% endif %}{% if s.show_truth %}&show_truth=1{% endif %}');
+      if (resp.ok) {
+        const uData = await resp.json();
+        const canvas = document.getElementById('unit-rul-svg-wrap');
+        EvidentChart.renderRulChart(canvas, {
+          series: uData.series,
+          currentCycle: uData.cycle,
+          firstFlagCycle: uData.first_flag_cycle,
+          horizon: uData.horizon,
+          showTruth: {{ 'true' if s.show_truth else 'false' }},
+          bandV2: {{ 'true' if s.band_v2 else 'false' }},
+          v1Coverage: uData.cov,
+          v2Coverage: uData.v2band ? uData.v2band.coverage : null,
+          onCycleSelect: (targetCycle) => {
+            window.location.href = `/unit/{{ s.subset }}/{{ s.unit }}?cycle=${targetCycle}{{ nav }}`;
+          }
+        });
+
+        // Past verdicts
+        const pastVerdictsEl = document.getElementById('past-verdicts-list');
+        if (pastVerdictsEl && uData.past_verdicts) {
+          if (uData.past_verdicts.length) {
+            pastVerdictsEl.innerHTML = `<ul style="list-style:none; padding:0; display:flex; flex-direction:column; gap:0.25rem;">` +
+              uData.past_verdicts.map(v => `
+                <li style="font-size:0.75rem; color:var(--text-muted); border-bottom:1px solid var(--border-muted); padding-bottom:2px;">
+                  <b>${v.verdict === 'reviewed_warrants_inspection' ? 'Warrants Inspection' : 'Dismissed'}</b> (opinion) at cycle ${v.cycle} [${v.policy}] · <span style="font-family:var(--font-mono);">${v.ts}</span>
+                </li>
+              `).join('') + `</ul>`;
+          } else {
+            pastVerdictsEl.innerHTML = '<span style="font-size:0.75rem; color:var(--text-dim);">No previous verdicts logged.</span>';
+          }
+        }
+      }
+    } catch(e) {
+      console.warn('Interactive chart render failed, using fallback', e);
+    }
+
+    // Load sensors
+    try {
+      const sResp = await fetch('/api/unit/{{ s.subset }}/{{ s.unit }}/sensors?cycle={{ s.cycle }}');
+      if (sResp.ok) {
+        const sData = await sResp.json();
+        const sContainer = document.getElementById('unit-sensors-svg-wrap');
+        EvidentChart.renderSensors(sContainer, sData);
+      }
+    } catch(e) {}
+
+    if (window.loadNotes) window.loadNotes("{{ s.subset }}", {{ s.unit }});
+  });
+</script>
+{% endblock %}

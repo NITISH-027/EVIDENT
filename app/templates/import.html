@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}EVIDENT - Import Machine History{% endblock %}
+{% block content %}
+<div class="page-container">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Import Machine History (File Journey)</h1>
+      <p class="page-desc">Upload operational or simulated engine run history conforming to the 26-column C-MAPSS schema.</p>
+    </div>
+  </div>
+
+  <div class="caveat-box">
+    Upload a text/CSV file in the C-MAPSS schema: 26 columns - unit, cycle, 3 operating settings, 21 sensor channels (space or comma separated, optional header). Units failing schema validation are excluded with reasons; valid units are processed. Inference here is a demo on uploaded data using the frozen trained model - no performance claim attaches to it.
+  </div>
+
+  <!-- Upload Form Card with Drag & Drop -->
+  <div class="card">
+    <form id="import-upload-form" method="post" enctype="multipart/form-data">
+      <div style="display:flex; flex-wrap:wrap; gap:var(--space-4); align-items:flex-end;">
+        <div>
+          <label style="font-size:var(--text-xs); font-weight:600; display:block; margin-bottom:0.35rem;">Subset Model</label>
+          <select name="subset" class="queue-search" style="width:140px;">
+            {% for s in subsets %}
+              <option value="{{ s }}" {% if subset == s %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div style="flex:1; min-width:260px;">
+          <label style="font-size:var(--text-xs); font-weight:600; display:block; margin-bottom:0.35rem;">Machine History File (.txt / .csv)</label>
+          <div id="drop-zone" style="border:2px dashed var(--border-base); border-radius:var(--radius-sm); padding:var(--space-3); text-align:center; background:var(--bg-app); cursor:pointer;">
+            <input type="file" id="file-input" name="file" required style="display:none;" />
+            <span id="drop-text" style="font-size:var(--text-xs); color:var(--text-muted);">
+              Drag &amp; drop file here, or <span style="color:var(--accent-blue); text-decoration:underline;">browse</span>
+            </span>
+          </div>
+        </div>
+
+        <div>
+          <button type="submit" class="btn btn-primary" style="padding:0.5rem 1.25rem;">Validate &amp; run inference</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  {% if error %}
+    <div class="caveat-box" style="border-left-color: var(--chart-truth); background: rgba(220, 38, 38, 0.1); color: var(--chart-truth);">
+      <b>Rejected:</b> {{ error }}
+    </div>
+  {% endif %}
+
+  {% if report %}
+    <!-- Schema Validation Report -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Schema Validation Report</div>
+      </div>
+      <div style="font-size:var(--text-sm); line-height:1.5;">
+        <b>Schema validation:</b> {{ report.units_in }} unit(s) in, {{ report.units_out }} accepted{% if report.units_rejected %}, rejected: {% for u, why in report.units_rejected.items() %}unit {{ u }} ({{ why }}){% endfor %}{% endif %}.
+      </div>
+    </div>
+
+    {% if rows %}
+      <!-- Results Queue -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Inference Results Queue (Latest Uploaded Cycles)</div>
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <span style="font-size:var(--text-xs); color:var(--text-dim);">Upload SHA256:</span>
+            <span class="sha-pill" onclick="navigator.clipboard.writeText('{{ report.upload_sha256 or token }}')" title="Click to copy full SHA256">
+              {{ (report.upload_sha256 or token)[:16] }} 📋
+            </span>
+          </div>
+        </div>
+
+        <p class="honesty-notice" style="margin-bottom:var(--space-3);">
+          Warning policy in this view: <b>{{ policy_label }}</b>. Flags are computed on each unit's LATEST SHOWN cycle only, on that unit's own uploaded history (strictly past-only); there is no ground truth for imported units.
+          {% if version == "v1" %}
+            <a href="/import?subset={{ subset }}&version=v2" style="color:var(--accent-blue);">switch to v2 exploratory policy</a>
+          {% else %}
+            <a href="/import?subset={{ subset }}" style="color:var(--accent-blue);">switch to v1 stable policy</a>
+          {% endif %}
+        </p>
+
+        <div style="overflow-x:auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Unit</th>
+                <th>Cycles</th>
+                <th>Latest cycle</th>
+                <th>Predicted remaining (median)</th>
+                <th>Band (nominal 80%; measured coverage below nominal - unvalidated)</th>
+                <th>Warning flag</th>
+                <th>Caveats</th>
+                <th>Review</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in rows %}
+                <tr>
+                  <td style="font-family:var(--font-mono); font-weight:600;">{{ r.unit }}</td>
+                  <td>{{ r.n_cycles }}</td>
+                  <td>{{ r.cycle }}</td>
+                  <td style="font-family:var(--font-mono); font-weight:600;">{{ r.q50 }}</td>
+                  <td style="font-family:var(--font-mono); color:var(--text-muted);">[{{ r.q10 }}, {{ r.q90 }}]</td>
+                  <td>
+                    {% if r.flag %}
+                      <span class="chip chip-flag">FLAG (&le; {{ horizon }})</span>
+                    {% else %}
+                      <span class="chip chip-ok">-</span>
+                    {% endif %}
+                    {% if r.persist_unconfirmable %}
+                      <br><span class="chip chip-caveat" style="margin-top:2px;">persistence cannot confirm with &lt;3 cycles of history</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if r.limited %}<span class="chip chip-caveat">limited history</span> {% endif %}
+                    {% if r.envelope %}<span class="chip chip-caveat">outside envelope (descriptive screen)</span>{% endif %}
+                  </td>
+                  <td>
+                    <a href="/import/{{ token }}/{{ r.unit }}{% if version == 'v2' %}?version=v2{% endif %}" class="btn" style="padding:2px 8px;">
+                      evidence &amp; review &rarr;
+                    </a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="caveat-box" style="margin-top:var(--space-3);">
+          Imported data is held in server memory for this demo run only; restarting the app discards it. Engineer verdicts on imported units are persisted to the audit log.
+        </div>
+      </div>
+    {% endif %}
+  {% endif %}
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const dropText = document.getElementById('drop-text');
+
+    if (dropZone && fileInput) {
+      dropZone.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', () => {
+        if (fileInput.files.length) {
+          dropText.textContent = `Selected: ${fileInput.files[0].name} (${(fileInput.files[0].size/1024).toFixed(1)} KB)`;
+        }
+      });
+
+      dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = 'var(--accent-blue)';
+      });
+      dropZone.addEventListener('dragleave', () => {
+        dropZone.style.borderColor = 'var(--border-base)';
+      });
+      dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = 'var(--border-base)';
+        if (e.dataTransfer.files.length) {
+          fileInput.files = e.dataTransfer.files;
+          dropText.textContent = `Selected: ${fileInput.files[0].name} (${(fileInput.files[0].size/1024).toFixed(1)} KB)`;
+        }
+      });
+    }
+  });
+</script>
+{% endblock %}

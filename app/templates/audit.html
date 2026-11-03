@@ -1,0 +1,376 @@
+{% extends "base.html" %}
+{% block title %}EVIDENT - Audit Trail &amp; Decision Evaluation{% endblock %}
+{% block content %}
+<div class="page-container">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Audit trail</h1>
+      <p class="page-desc">Append-only log of displayed warning flags, operational imports, and human review verdicts.</p>
+    </div>
+    <div style="display:flex; gap:var(--space-2);">
+      <a href="/handover" class="btn btn-primary">Generate Shift Handover &rarr;</a>
+    </div>
+  </div>
+
+  <div class="caveat-box">
+    Append-only log of flag-shown events, import uploads and engineer verdicts. Flag events are logged when a flagged state is shown to a reviewer or produced at import; replay back-history transitions never viewed are not individually logged - the frozen first-alert outcomes for all replay units are the scoreboard warning metrics.
+  </div>
+
+  <!-- Event Log Card with Client-side Filter Controls -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Event Log</div>
+      <!-- Filters -->
+      <div style="display:flex; gap:var(--space-2); align-items:center; flex-wrap:wrap;">
+        <select id="audit-filter-type" class="queue-search" style="width:130px;" aria-label="Filter by record type">
+          <option value="all">All Records</option>
+          <option value="flag_shown">flag_shown</option>
+          <option value="human_verdict">human_verdict</option>
+          <option value="import_upload">import_upload</option>
+        </select>
+        <input type="text" id="audit-filter-search" class="queue-search" placeholder="Filter unit/subset..." aria-label="Filter events" />
+      </div>
+    </div>
+
+    <div style="overflow-x:auto;">
+      <table class="data-table" id="audit-events-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Time</th>
+            <th>Record</th>
+            <th>Channel</th>
+            <th>Subject</th>
+            <th>Unit</th>
+            <th>Cycle</th>
+            <th>Policy</th>
+            <th>Verdict / detail</th>
+            <th>Upload SHA256</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in entries %}
+            <tr class="audit-row" data-type="{{ e.record_type }}" data-unit="{{ e.unit or e.units }}" data-subset="{{ e.model_subset or e.subset }}">
+              <td style="font-family:var(--font-mono);">{{ loop.index }}</td>
+              <td style="font-family:var(--font-mono);">{{ e.ts }}</td>
+              <td>
+                {% if e.record_type == 'flag_shown' %}
+                  <span class="chip chip-flag">flag_shown</span>
+                {% elif e.record_type == 'human_verdict' %}
+                  <span class="chip chip-reviewed">human_verdict</span>
+                {% elif e.record_type == 'import_upload' %}
+                  <span class="chip chip-caveat">import_upload</span>
+                {% else %}
+                  <span class="chip chip-unreviewed">{{ e.record_type }}</span>
+                {% endif %}
+              </td>
+              <td class="caveat">{{ e.channel }}</td>
+              <td style="font-family:var(--font-mono);">{{ e.model_subset or e.subset }}</td>
+              <td style="font-family:var(--font-mono);">{{ e.unit or e.units }}</td>
+              <td style="font-family:var(--font-mono);">{{ e.cycle or e.cycles }}</td>
+              <td class="caveat">{{ e.policy or "v1_q50" }}</td>
+              <td>
+                {% if e.verdict %}
+                  <b>{{ e.verdict }}</b> (opinion)
+                {% else %}
+                  {{ e.detail or "" }}
+                {% endif %}
+              </td>
+              <td>
+                {% if e.upload_sha256 %}
+                  <span class="sha-pill" onclick="navigator.clipboard.writeText('{{ e.upload_sha256 }}')" title="Full: {{ e.upload_sha256 }} (Click to copy)">
+                    {{ e.upload_sha256[:16] }} 📋
+                  </span>
+                {% else %}
+                  <span style="color:var(--text-dim);">-</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if not entries %}<p style="padding:1rem; color:var(--text-muted);">No events logged yet.</p>{% endif %}
+  </div>
+
+  <!-- Review Behavior Statistics -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><h2>Review behavior (descriptive)</h2></div>
+    </div>
+    <p class="caveat">
+      {{ behavior.total }} human verdict(s) logged: {{ behavior.warrants }} warrants-inspection, {{ behavior.dismissed }} dismissed. These counts describe REVIEW BEHAVIOR on a tiny demo sample - they are not accuracy, and a human verdict is an opinion, never the true outcome.
+    </p>
+  </div>
+
+  <!-- Known Outcome Reference -->
+  {% if retro %}
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><h2>Known outcome reference (frozen replay evaluation)</h2></div>
+      </div>
+      <p class="caveat">
+        For verdicts on replay units, the last column repeats the unit's frozen first-alert latched outcome, computed from the same frozen replay predictions and declared policy the scoreboard used (an earlier premature flag never converts into a later catch) - it is not a new validation of the verdict. The cycle-local column is a fact about the reviewed cycle only and is never a policy result. Imported units have no ground truth: no outcome is available and they are excluded from any scoring.
+      </p>
+
+      <div style="overflow-x:auto;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Source</th>
+              <th>Unit</th>
+              <th>Cycle</th>
+              <th>Human verdict (opinion)</th>
+              <th>At reviewed cycle (cycle-local fact)</th>
+              <th>Known outcome (frozen unit-level first-alert reference)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for e in retro %}
+              <tr>
+                <td style="font-family:var(--font-mono);">{{ e.ts }}</td>
+                <td>{{ e.model_subset or e.subset }}{% if e.upload_sha256 %} (upload {{ e.upload_sha256[:12] }}){% endif %}</td>
+                <td style="font-family:var(--font-mono);">{{ e.unit }}</td>
+                <td style="font-family:var(--font-mono);">{{ e.cycle }}</td>
+                <td><b>{{ e.verdict }}</b> (opinion)</td>
+                <td>{{ e.cycle_local }}</td>
+                <td>{{ e.outcome }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- Retrospective Model Decision vs Recorded Simulator Truth -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <h2>Retrospective model decision vs recorded simulator truth (outcome scoring, separate estimand)</h2>
+      </div>
+    </div>
+    <p class="caveat">Estimand: {{ truth_by_subset[truth_by_subset.keys()|list|first].estimand if truth_by_subset else "" }}</p>
+    <p class="caveat">
+      Flags shown in this app (fleet, unit replay, flag_shown logs, frozen references) follow the <b>selected view's policy</b>: v1 (q50 &le; {{ horizon }}) is the stable default; a v2 view applies its subset's exploratory policy (exact trigger condition shown in that view's banner) and is never silently substituted - a v2 view without v2 results shows an explicit UNAVAILABLE fallback, not a silent v1. The retrospective rows below are labeled evaluation data under each policy.
+    </p>
+
+    <div style="overflow-x:auto;">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Subset</th>
+            <th>Policy</th>
+            <th>Units</th>
+            <th>Flagged cycles: in-window (0&lt;RUL&le;{{ horizon }})</th>
+            <th>Flagged: early (RUL&gt;{{ horizon }})</th>
+            <th>Flagged: after failure</th>
+            <th>Unflagged: correct (RUL&gt;{{ horizon }})</th>
+            <th>Unflagged: in-window</th>
+            <th>Unflagged: after failure</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ds, tb in truth_by_subset.items() %}
+            <tr>
+              <td style="font-family:var(--font-mono); font-weight:700;">{{ ds }}</td>
+              <td>v1 (q50&le;{{ horizon }})</td>
+              <td style="font-family:var(--font-mono);">{{ tb.units }}</td>
+              <td style="font-family:var(--font-mono);">{{ "%.2f"|format(tb.flag_in_window_equal_unit) if tb.flag_in_window_equal_unit is not none else "-" }}{% if tb.flag_in_window_ci[0] is not none %} [{{ "%.2f"|format(tb.flag_in_window_ci[0]) }}, {{ "%.2f"|format(tb.flag_in_window_ci[1]) }}]{% endif %}</td>
+              <td style="font-family:var(--font-mono);">{{ "%.2f"|format(tb.flag_early_equal_unit) if tb.flag_early_equal_unit is not none else "-" }}</td>
+              <td style="font-family:var(--font-mono);">{{ "%.2f"|format(tb.flag_after_failure_equal_unit) if tb.flag_after_failure_equal_unit is not none else "-" }}</td>
+              <td style="font-family:var(--font-mono);">{{ "%.2f"|format(tb.noflag_correct_equal_unit) if tb.noflag_correct_equal_unit is not none else "-" }}</td>
+              <td style="font-family:var(--font-mono);">{{ "%.2f"|format(tb.noflag_in_window_equal_unit) if tb.noflag_in_window_equal_unit is not none else "-" }}</td>
+              <td style="font-family:var(--font-mono);">{{ "%.2f"|format(tb.noflag_after_failure_equal_unit) if tb.noflag_after_failure_equal_unit is not none else "-" }}</td>
+            </tr>
+            {% if tb.v2 %}
+              <tr>
+                <td style="font-family:var(--font-mono); font-weight:700;">{{ ds }}</td>
+                <td>v2 {{ tb.v2_policy }} (post-hoc, exploratory)</td>
+                <td style="font-family:var(--font-mono);">{{ tb.v2.units }}</td>
+                <td style="font-family:var(--font-mono);">{{ "%.2f"|format(tb.v2.flag_in_window_equal_unit) if tb.v2.flag_in_window_equal_unit is not none else "-" }}{% if tb.v2.flag_in_window_ci[0] is not none %} [{{ "%.2f"|format(tb.v2.flag_in_window_ci[0]) }}, {{ "%.2f"|format(tb.v2.flag_in_window_ci[1]) }}]{% endif %}</td>
+                <td style="font-family:var(--font-mono);">{{ "%.2f"|format(tb.v2.flag_early_equal_unit) if tb.v2.flag_early_equal_unit is not none else "-" }}</td>
+                <td style="font-family:var(--font-mono);">{{ "%.2f"|format(tb.v2.flag_after_failure_equal_unit) if tb.v2.flag_after_failure_equal_unit is not none else "-" }}</td>
+                <td style="font-family:var(--font-mono);">{{ "%.2f"|format(tb.v2.noflag_correct_equal_unit) if tb.v2.noflag_correct_equal_unit is not none else "-" }}</td>
+                <td style="font-family:var(--font-mono);">{{ "%.2f"|format(tb.v2.noflag_in_window_equal_unit) if tb.v2.noflag_in_window_equal_unit is not none else "-" }}</td>
+                <td style="font-family:var(--font-mono);">{{ "%.2f"|format(tb.v2.noflag_after_failure_equal_unit) if tb.v2.noflag_after_failure_equal_unit is not none else "-" }}</td>
+              </tr>
+            {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <p class="caveat">
+      This is the outcome-driven retrospective scoring: the model's cycle-local decisions measured against recorded simulator remaining life, equal-unit weighted over small unit counts (n = 15/39/15/38 per subset) with unit-bootstrap 95% CIs on the in-window column, computed from the frozen replay artifacts (source hash in results/retrospective_decision_*.json). Rows within a unit are correlated - these are descriptive statistics on simulator data, NOT first-alert policy effectiveness (the scoreboard owns that), NOT validation on real machines. Imported units are excluded - they have no recorded truth. Reviewer-opinion agreement below is optional context and is not a substitute for this scoring.
+    </p>
+  </div>
+
+  <!-- Reviewer-opinion Agreement -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <h2>Reviewer-opinion agreement with flag state (optional - not outcome scoring)</h2>
+      </div>
+    </div>
+    <p class="caveat">Estimand: {{ verdict_agreement.estimand }}</p>
+    {% if verdict_agreement.n_verdicts_scored %}
+      <p class="honesty-notice" style="margin-bottom:var(--space-2);">
+        {{ verdict_agreement.n_agree }} of {{ verdict_agreement.n_verdicts_scored }} scored replay verdicts agree with the flag state at the reviewed cycle ({{ "%.0f"|format(100 * verdict_agreement.agreement_rate) }}%). A verdict is a reviewer's OPINION at review time; agreement with a recorded flag state is not evidence the system is right or wrong about machine health, and is not the first-alert policy result on the scoreboard.
+      </p>
+      <div style="overflow-x:auto;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Subset</th>
+              <th>Unit</th>
+              <th>Cycle</th>
+              <th>Verdict (opinion)</th>
+              <th>Flag shown at that cycle</th>
+              <th>Agrees</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in verdict_agreement.rows %}
+              <tr>
+                <td style="font-family:var(--font-mono);">{{ r.ts }}</td>
+                <td style="font-family:var(--font-mono);">{{ r.subset }}</td>
+                <td style="font-family:var(--font-mono);">{{ r.unit }}</td>
+                <td style="font-family:var(--font-mono);">{{ r.cycle }}</td>
+                <td>{{ r.verdict }}</td>
+                <td>{{ "yes" if r.flag_shown_at_cycle else "no" }}</td>
+                <td>
+                  <span class="chip {% if r.agrees %}chip-ok{% else %}chip-flag{% endif %}">
+                    {{ "yes" if r.agrees else "no" }}
+                  </span>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p style="padding:0.5rem 0; color:var(--text-muted);">
+        No replay verdicts to score yet. Verdicts on imported units are never scored here - they have no ground truth.
+      </p>
+    {% endif %}
+  </div>
+
+  <!-- Frozen References -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <h2>Frozen first-alert outcomes - all replay units (reconstructed reference, not raised alerts)</h2>
+      </div>
+    </div>
+    <p class="caveat">
+      One frozen_first_alert_reference record per replay unit, reconstructed from the frozen prediction artifacts (source + hash shown) under the declared first-alert policy (first flag; catch 0 &lt; RUL &le; {{ horizon }}, premature RUL &gt; {{ horizon }}, miss otherwise, including never-flagged units). These are evaluation reference data reconstructed now from the frozen run - they are NOT operational alerts raised by the system, they carry no simulated historical timestamp, and no click creates them. Record type distinguishes them from flag_shown (actually displayed) and human_verdict (reviewer action).
+    </p>
+
+    <details>
+      <summary style="font-size:var(--text-xs); font-weight:600; cursor:pointer; color:var(--accent-blue);">
+        Show {{ frozen_cov|length }} replay units
+      </summary>
+      <div style="overflow-x:auto; margin-top:var(--space-2);">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Subset</th>
+              <th>Unit</th>
+              <th>First-flag cycle</th>
+              <th>Recorded remaining at first flag</th>
+              <th>Frozen class</th>
+              <th>Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in frozen_cov %}
+              <tr>
+                <td style="font-family:var(--font-mono);">{{ f.subset }}</td>
+                <td style="font-family:var(--font-mono);">{{ f.unit }}</td>
+                <td style="font-family:var(--font-mono);">{{ f.first_flag_cycle if f.first_flag_cycle is not none else "-" }}</td>
+                <td style="font-family:var(--font-mono);">{{ "%.0f"|format(f.rul_at_first_flag) if f.rul_at_first_flag is not none else "-" }}</td>
+                <td><span class="chip {% if f.frozen_class == 'catch' %}chip-ok{% elif f.frozen_class == 'premature' %}chip-caveat{% else %}chip-flag{% endif %}">{{ f.frozen_class }}</span></td>
+                <td class="caveat" style="font-family:var(--font-mono);">{{ f.source_sha256 }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </details>
+  </div>
+
+  <!-- Frozen Flag-Cycle References -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <h2>Frozen flag-cycle reference coverage - every flagged replay cycle (reconstructed reference, not raised alerts)</h2>
+      </div>
+    </div>
+    <p class="caveat">
+      One frozen_flag_cycle_reference record per replay cycle where the frozen model would have shown a flag, reconstructed from the same frozen prediction artifacts (source + hash shown). This completes the reference coverage: every flagged replay cycle has a frozen record, whether or not a reviewer ever viewed it. These are evaluation reference data - NOT operational alerts, no historical timestamps, no click creates them.
+    </p>
+
+    <details>
+      <summary style="font-size:var(--text-xs); font-weight:600; cursor:pointer; color:var(--accent-blue);">
+        Show {{ frozen_cycles|length }} flagged replay cycles
+      </summary>
+      <div style="overflow-x:auto; margin-top:var(--space-2);">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Subset</th>
+              <th>Unit</th>
+              <th>Cycle</th>
+              <th>q50</th>
+              <th>Recorded remaining life</th>
+              <th>Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in frozen_cycles %}
+              <tr>
+                <td style="font-family:var(--font-mono);">{{ f.subset }}</td>
+                <td style="font-family:var(--font-mono);">{{ f.unit }}</td>
+                <td style="font-family:var(--font-mono);">{{ f.cycle }}</td>
+                <td style="font-family:var(--font-mono);">{{ f.q50 }}</td>
+                <td style="font-family:var(--font-mono);">{{ "%.0f"|format(f.recorded_remaining_life) }}</td>
+                <td class="caveat" style="font-family:var(--font-mono);">{{ f.source_sha256 }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </details>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const filterType = document.getElementById('audit-filter-type');
+    const filterSearch = document.getElementById('audit-filter-search');
+    const rows = document.querySelectorAll('.audit-row');
+
+    function applyFilters() {
+      const type = filterType ? filterType.value : 'all';
+      const q = filterSearch ? filterSearch.value.trim().toLowerCase() : '';
+
+      rows.forEach(r => {
+        const rType = r.getAttribute('data-type');
+        const rUnit = r.getAttribute('data-unit') || '';
+        const rSub = r.getAttribute('data-subset') || '';
+
+        const typeMatch = (type === 'all') || (rType === type);
+        const searchMatch = !q || rUnit.includes(q) || rSub.toLowerCase().includes(q);
+
+        r.style.display = (typeMatch && searchMatch) ? '' : 'none';
+      });
+    }
+
+    if (filterType) filterType.addEventListener('change', applyFilters);
+    if (filterSearch) filterSearch.addEventListener('input', applyFilters);
+  });
+</script>
+{% endblock %}

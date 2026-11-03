@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Imported Unit {{ s.unit }} ({{ s.subset }}) - Evidence &amp; Review{% endblock %}
+{% block content %}
+<div class="page-container">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Imported unit {{ s.unit }} ({{ s.subset }} model) - evidence &amp; review</h1>
+      <p class="page-desc">Operational upload review. Demo inference on uploaded data using the frozen trained model.</p>
+    </div>
+    <div style="display:flex; gap:var(--space-2);">
+      <a href="/import" class="btn">&larr; Back to Import</a>
+      <a href="/quality_import/{{ s.token }}/{{ s.unit }}" class="btn">quality gate</a>
+    </div>
+  </div>
+
+  <div class="caveat-box">
+    Demo inference on uploaded data with the frozen trained model - no performance claim attaches to it. No ground truth exists for imported units; nothing here is an evaluation.
+  </div>
+
+  <!-- Forecast Card -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Forecast at latest uploaded cycle {{ s.cycle }}</div>
+      <div>
+        {% if s.flag %}<span class="chip chip-flag">WARNING FLAG</span>{% else %}<span class="chip chip-ok">NO FLAG</span>{% endif %}
+      </div>
+    </div>
+
+    <div style="font-size:var(--text-base); line-height:1.6;">
+      <b>Forecast at latest uploaded cycle {{ s.cycle }}:</b> median remaining <b>{{ s.q50 }}</b> cycles,
+      band [{{ s.q10 }}, {{ s.q90 }}]
+      <span class="honesty-notice">(nominal 80%; measured coverage on held-out replay: {{ cov }}% - too narrow as fitted, treat as indicative, not a probability)</span>.
+
+      {% if s.flag %}
+        <div class="caveat-box" style="margin-top:0.5rem; background:var(--flag-amber-bg); border-left-color:var(--flag-amber); color:var(--flag-amber);">
+          <span class="flag">WARNING FLAG: predicted remaining life &le; {{ horizon }} cycles.</span>
+          <div>This is a threshold flag, not a failure probability.</div>
+        </div>
+      {% endif %}
+
+      {% if s.limited %}
+        <div class="caveat-box">Limited history: fewer than 30 observed cycles; window features use available history.</div>
+      {% endif %}
+      {% if s.envelope %}
+        <div class="caveat-box">Outside training envelope (descriptive min/max screen per feature - not a validated out-of-distribution detector). Prediction still shown; treat with extra caution.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- RUL Chart -->
+  <div class="chart-container">
+    <div class="chart-header-row">
+      <span style="font-weight:600; font-size:var(--text-base);">Uploaded Trajectory Forecast</span>
+      <span style="font-size:var(--text-xs); color:var(--text-dim);">No retrospective ground truth available for imported units</span>
+    </div>
+    <img src="/chart_import/rul/{{ s.token }}/{{ s.unit }}.png" style="max-width:100%; border-radius:4px;" alt="Uploaded Unit RUL Forecast" />
+  </div>
+
+  <!-- Sensor Evidence Card -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <h3>{% if s.flag %}Warning evidence card{% else %}Review card (no flag raised){% endif %}</h3>
+      </div>
+    </div>
+
+    {% if not s.flag %}
+      <div class="caveat-box">
+        No warning flag at the latest uploaded cycle. A quiet display is not a health guarantee; if an engineer has a concern the model may have missed, review the trend signals below and log a verdict.
+      </div>
+    {% endif %}
+
+    <p style="font-size:var(--text-xs); color:var(--text-muted); margin-bottom:var(--space-3);">
+      Sensor channels selected as trend and context signals for this unit. Any channel ranking is a model association with the prediction, never evidence of physical cause in the machine.
+    </p>
+
+    <img src="/chart_import/sensors/{{ s.token }}/{{ s.unit }}.png" style="max-width:100%; border-radius:4px;" alt="Uploaded Unit Sensor Trends" />
+  </div>
+
+  <!-- Verification Form -->
+  <div class="verdict-actions-card">
+    <div class="card-header">
+      <div class="card-title">Engineer Verification (Opinion)</div>
+    </div>
+
+    <div id="verdict-confirmation-live" class="confirmation-live" aria-live="polite"></div>
+
+    <form id="engineer-verdict-form" method="post" action="/verify">
+      <input type="hidden" name="subset" value="import">
+      <input type="hidden" name="token" value="{{ s.token }}">
+      <input type="hidden" name="unit" value="{{ s.unit }}">
+      <input type="hidden" name="cycle" value="{{ s.cycle }}">
+
+      <div class="verdict-buttons-row">
+        <b>Engineer verification:</b>
+        <button type="submit" name="verdict" value="reviewed_warrants_inspection" class="btn-warrant">
+          Reviewed - warrants inspection
+        </button>
+        <button type="submit" name="verdict" value="reviewed_dismissed" class="btn-dismiss">
+          Reviewed - dismissed
+        </button>
+      </div>
+
+      <div class="honesty-notice" style="margin-top:0.5rem;">
+        (a human review verdict is logged to the audit trail with the upload SHA256, model subset, unit and cycle; sensor trends are model associations, they do not confirm physical degradation; advisory only - no machine action is commanded)
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

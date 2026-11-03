@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Quality Gate - {{ subset }} Unit {{ unit }}{% endblock %}
+{% block content %}
+<div class="page-container">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Quality gate - {{ subset }} unit {{ unit }}</h1>
+      <p class="page-desc">Data quality validation and feature envelope verification.</p>
+    </div>
+    <div>
+      <a href="/unit/{{ subset }}/{{ unit }}" class="btn">&larr; Back to Unit Replay</a>
+    </div>
+  </div>
+
+  <div class="caveat-box">
+    {{ schema }}. Constant channels are excluded - constant on fit split as uninformative by a validated per-dataset rule, not treated as sensor faults. Envelope columns are fit-split feature ranges - a descriptive screen, not a validated out-of-distribution detector.
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Sensor Feature Verification Matrix (21 Channels)</div>
+    </div>
+
+    <div style="overflow-x:auto;">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Channel</th>
+            <th>Status</th>
+            <th>Observed min</th>
+            <th>Observed max</th>
+            <th>Fit envelope (feature mean)</th>
+            <th>Window-mean outside envelope</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rows %}
+            <tr>
+              <td style="font-family:var(--font-mono); font-weight:600;">{{ r.ch }}</td>
+              <td>
+                {% if "excluded" in r.state %}
+                  <span class="chip chip-caveat">{{ r.state }}</span>
+                {% else %}
+                  <span class="chip chip-ok">{{ r.state }}</span>
+                {% endif %}
+              </td>
+              <td style="font-family:var(--font-mono);">{{ r.min }}</td>
+              <td style="font-family:var(--font-mono);">{{ r.max }}</td>
+              <td style="font-family:var(--font-mono);">{{ r.env }}</td>
+              <td>
+                {% if r.outside %}
+                  <span class="chip chip-flag">yes - flagged</span>
+                {% else %}
+                  <span style="color:var(--text-dim);">-</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

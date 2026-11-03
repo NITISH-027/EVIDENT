@@ -1,0 +1,303 @@
+{% extends "base.html" %}
+{% block title %}EVIDENT - Performance Scoreboard{% endblock %}
+{% block content %}
+<div class="page-container">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Scoreboard - measured results, three separate verdicts</h1>
+      <p class="page-desc">Independent evaluation across all four C-MAPSS subsets (FD001–FD004). No single health score or summary badge.</p>
+    </div>
+    <!-- In-page Dataset Jump Links -->
+    <div style="display:flex; gap:var(--space-2);">
+      {% for r in results %}
+        <a href="#section-{{ r.subset }}" class="btn" style="font-family:var(--font-mono); font-size:var(--text-xs);">
+          {{ r.subset }} {% if r.subset == "FD001" %}(primary){% endif %}
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="caveat-box">
+    <b>Evaluation Protocol &amp; Repetition Disclosure:</b>
+    No single pass/fail badge: the protocol judges <b>three results separately</b>.
+    Passing the error comparison does NOT validate the uncertainty band or the warnings.
+    Official test endpoints: FD002-FD004 scored <b>exactly once</b> with the final frozen pipeline.
+    <b>FD001 scored twice, identically</b> (RMSE 20.21): a smoke run, then a re-run after a speed-only
+    refactor (features vectorized, verified numerically identical; grid trimmed 6 to 5 for wall-clock
+    reasons - the dropped config loses on the tune split, pinball 11.02 vs 10.83, a tune-data-only check).
+    FD001's endpoint result is a <b>reproducibility repeat, not a fully untouched confirmation</b>.
+    Model choices were made on the tune split only (frozen split IDs + seed in <code>results/splits.json</code>).
+  </div>
+
+  {% for r in results %}
+    <div id="section-{{ r.subset }}" class="card" style="margin-top:var(--space-4);">
+      <div class="card-header">
+        <h2 style="font-size:var(--text-lg); font-weight:700;">
+          {{ r.subset }} {% if r.subset == "FD001" %}<span class="chip chip-ok">PRIMARY</span>{% endif %}
+        </h2>
+      </div>
+
+      <!-- Verdict 1: Error -->
+      <div style="margin-bottom:var(--space-4);">
+        <h3 style="font-size:var(--text-base); font-weight:600; margin-bottom:var(--space-2);">
+          1. Remaining-life error (official test endpoints, {{ r.test.units }} units)
+        </h3>
+        
+        <div class="sticky-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Estimand</th>
+                <th>Model</th>
+                <th>B1 constant ({{ "%.1f"|format(r.baselines.B1_constant) }})</th>
+                <th>B2 age-based (median lifetime {{ "%.0f"|format(r.baselines.B2_median_lifetime) }})</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>Endpoint RMSE</b></td>
+                <td>
+                  <div class="bar-container">
+                    <span style="font-family:var(--font-mono); font-weight:700;">{{ "%.1f"|format(r.test.model_endpoint_rmse) }}</span>
+                    <div class="bar-track" style="max-width:100px;">
+                      <div class="bar-fill" style="width:{{ [100, (r.test.model_endpoint_rmse / r.test.vs_B1.rmse_baseline * 100)|round]|min }}%;"></div>
+                    </div>
+                  </div>
+                </td>
+                <td style="font-family:var(--font-mono);">{{ "%.1f"|format(r.test.vs_B1.rmse_baseline) }}</td>
+                <td style="font-family:var(--font-mono);">{{ "%.1f"|format(r.test.vs_B2.rmse_baseline) }}</td>
+              </tr>
+              <tr>
+                <td>Paired bootstrap 95% CI on RMSE difference (baseline - model)</td>
+                <td>-</td>
+                <td style="font-family:var(--font-mono);">
+                  [{{ "%.1f"|format(r.test.vs_B1.ci[0]) }}, {{ "%.1f"|format(r.test.vs_B1.ci[1]) }}] 
+                  <span class="chip {% if r.test.vs_B1.excludes_zero %}chip-ok{% else %}chip-flag{% endif %}">
+                    {{ "excludes 0" if r.test.vs_B1.excludes_zero else "INCLUDES 0" }}
+                  </span>
+                </td>
+                <td style="font-family:var(--font-mono);">
+                  [{{ "%.1f"|format(r.test.vs_B2.ci[0]) }}, {{ "%.1f"|format(r.test.vs_B2.ci[1]) }}] 
+                  <span class="chip {% if r.test.vs_B2.excludes_zero %}chip-ok{% else %}chip-flag{% endif %}">
+                    {{ "excludes 0" if r.test.vs_B2.excludes_zero else "INCLUDES 0" }}
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>Replay-holdout RMSE, same population (model / B1 / B2)</td>
+                <td style="font-family:var(--font-mono);">{{ "%.1f"|format(r.descriptive_additions.replay_baselines_same_population.model_rmse) }}</td>
+                <td style="font-family:var(--font-mono);">{{ "%.1f"|format(r.descriptive_additions.replay_baselines_same_population.B1_rmse) }}</td>
+                <td style="font-family:var(--font-mono);">{{ "%.1f"|format(r.descriptive_additions.replay_baselines_same_population.B2_rmse) }}</td>
+              </tr>
+              <tr>
+                <td>Secondary: MAE / asymmetric PHM score</td>
+                <td colspan="3" style="font-family:var(--font-mono);">
+                  {{ "%.1f"|format(r.test.model_endpoint_mae) }} / {{ "%.0f"|format(r.test.model_phm_score) }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="honesty-notice" style="margin-top:0.4rem;">
+          <b>Verdict 1 (error):</b> {{ r.verdicts.model_vs_baselines }}.
+        </p>
+      </div>
+
+      <!-- Verdict 2: Uncertainty Band -->
+      <div style="margin-bottom:var(--space-4);">
+        <h3 style="font-size:var(--text-base); font-weight:600; margin-bottom:var(--space-2);">
+          2. Uncertainty band (replay-holdout, {{ r.replay.units }} units) - MEASURED, not assumed
+        </h3>
+        
+        <div class="sticky-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Nominal band</th>
+                <th>Measured coverage (per-unit, equal-unit avg, 95% CI)</th>
+                <th>Mean width (95% CI)</th>
+                <th>Endpoint coverage (test)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="font-family:var(--font-mono);">80%</td>
+                <td>
+                  <span class="chip chip-flag" style="font-family:var(--font-mono);">
+                    {{ "%.0f"|format(100*r.replay.band.coverage_mean) }}% [{{ "%.0f"|format(100*r.replay.band.coverage_ci[0]) }}%, {{ "%.0f"|format(100*r.replay.band.coverage_ci[1]) }}%]
+                  </span>
+                </td>
+                <td style="font-family:var(--font-mono);">
+                  {{ "%.1f"|format(r.replay.band.width_mean) }} [{{ "%.1f"|format(r.replay.band.width_ci[0]) }}, {{ "%.1f"|format(r.replay.band.width_ci[1]) }}]
+                </td>
+                <td style="font-family:var(--font-mono);">
+                  {{ "%.0f"|format(100*r.descriptive_additions.endpoint_band.coverage_mean) }}% [{{ "%.0f"|format(100*r.descriptive_additions.endpoint_band.coverage_ci[0]) }}%, {{ "%.0f"|format(100*r.descriptive_additions.endpoint_band.coverage_ci[1]) }}%] (unit CI)
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="honesty-notice" style="margin-top:0.4rem;">
+          Post-processing burden, measured raw rates (fixed sort + clip-at-0 applied identically on all splits): quantile-crossing rows <b>{{ "%.1f"|format(100*r.postprocess_replay.raw_crossing_row_rate) }}%</b> on replay and <b>{{ "%.1f"|format(100*r.postprocess_test.raw_crossing_row_rate) }}%</b> on test; negative-prediction rows {{ "%.2f"|format(100*r.postprocess_replay.raw_negative_row_rate) }}% / {{ "%.2f"|format(100*r.postprocess_test.raw_negative_row_rate) }}%.
+        </p>
+        <p class="caveat-box">
+          <b>Verdict 2 (band):</b> measured coverage is BELOW the nominal 80% on this subset - the band is too narrow as fitted. Uncertainty is unvalidated; treat the band as an indicative display, not a calibrated interval. This verdict stands separately from verdict 1.
+        </p>
+      </div>
+
+      <!-- Verdict 3: Warning Behavior -->
+      <div style="margin-bottom:var(--space-4);">
+        <h3 style="font-size:var(--text-base); font-weight:600; margin-bottom:var(--space-2);">
+          3. Warning behavior (replay-holdout, exclusive first-alert policy, horizon {{ r.replay.warning.horizon_N }})
+        </h3>
+
+        <div class="sticky-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Catch fraction</th>
+                <th>Premature-alert units</th>
+                <th>Misses</th>
+                <th>Lead time over catches (median [p10, p90])</th>
+                <th>Per-cycle FPR (true RUL &gt; N)</th>
+                <th>Latched burden (units alerting / mean alerted cycles)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="font-family:var(--font-mono); font-weight:700;">{{ "%.0f"|format(100*r.replay.warning.catch_fraction) }}%</td>
+                <td style="font-family:var(--font-mono); color:var(--flag-amber);">{{ "%.0f"|format(100*r.replay.warning.premature_unit_fraction) }}%</td>
+                <td style="font-family:var(--font-mono); color:var(--chart-truth);">{{ "%.0f"|format(100*r.replay.warning.miss_fraction) }}%</td>
+                <td style="font-family:var(--font-mono);">{{ r.replay.warning.lead_time_cycles.median }} [{{ r.replay.warning.lead_time_cycles.p10 }}, {{ r.replay.warning.lead_time_cycles.p90 }}] cycles (n={{ r.replay.warning.lead_time_cycles.n }})</td>
+                <td style="font-family:var(--font-mono);">{{ "%.3f"|format(r.replay.warning.per_cycle_fpr) }}</td>
+                <td style="font-family:var(--font-mono);">{{ "%.0f"|format(100*r.replay.warning.latched_alert_burden.units_ever_alerting_fraction) }}% / {{ "%.1f"|format(r.replay.warning.latched_alert_burden.mean_alerted_cycles_per_unit) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="caveat-box">
+          <b>Verdict 3 (warning):</b> descriptive measures against the declared horizon under our declared episode policy. No downtime or cost savings are claimed. A premature alert is never counted as a catch.
+        </p>
+      </div>
+
+      <!-- Collapsible Detailed Diagnostics -->
+      <details style="margin-top:var(--space-3); border-top:1px solid var(--border-muted); padding-top:var(--space-2);">
+        <summary style="font-size:var(--text-xs); font-weight:600; cursor:pointer; color:var(--text-muted);">
+          Replay error by true-RUL band, weighting sensitivity, post-processing, tuning record
+        </summary>
+        <div style="margin-top:var(--space-3);">
+          <table class="data-table" style="max-width:400px; margin-bottom:var(--space-3);">
+            <thead>
+              <tr><th>True RUL band</th><th>n</th><th>RMSE</th></tr>
+            </thead>
+            <tbody>
+              {% for band, v in r.replay.banded_rmse.items() %}
+                <tr>
+                  <td>{{ band }}</td>
+                  <td>{{ v.n }}</td>
+                  <td style="font-family:var(--font-mono);">{{ "%.1f"|format(v.rmse) if v.rmse is not none else "-" }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          <p class="honesty-notice">
+            Weighting sensitivity (tune split, median head): unit-balanced RMSE {{ "%.2f"|format(r.weighting_sensitivity.unit_balanced_tune_rmse) }} vs unweighted {{ "%.2f"|format(r.weighting_sensitivity.unweighted_tune_rmse) }} (unit-balanced kept as proposed default).
+          </p>
+          <p class="honesty-notice">
+            Post-processing burden (replay): raw negative-prediction row rate {{ "%.4f"|format(r.postprocess_replay.raw_negative_row_rate) }}, raw quantile-crossing row rate {{ "%.4f"|format(r.postprocess_replay.raw_crossing_row_rate) }} (fixed ordering + clip-at-0 applied identically everywhere).
+          </p>
+          <p class="honesty-notice">
+            Tuning (tune split only, median head; selected config shared across heads): {% for c in r.tuning.candidates %}{{ c.params.max_iter }}iter/lr{{ c.params.learning_rate }}/leaves{{ c.params.max_leaf_nodes }} pinball={{ "%.2f"|format(c.tune_pinball_q50) }}; {% endfor %}<b>selected</b>: {{ r.tuning.selected.params }}.
+          </p>
+          <p class="honesty-notice">
+            Constant channels excluded as uninformative: {{ r.constant_channels_excluded | join(", ") if r.constant_channels_excluded else "none" }}. Features: {{ r.n_features }}. Schema rejections: train {{ r.schema.train.units_rejected | length }}, test {{ r.schema.test.units_rejected | length }}. Pipeline runtime: {{ r.runtime_seconds }}s.
+          </p>
+        </div>
+      </details>
+
+      <!-- Version 2 Comparison -->
+      {% set v = v2[r.subset] %}
+      {% if v %}
+        <div style="margin-top:var(--space-4); border-top:1px dashed var(--border-base); padding-top:var(--space-3);">
+          <h3 style="font-size:var(--text-base); font-weight:600; margin-bottom:var(--space-2);">
+            Version 2 comparison (exploratory - v1 above remains the PRIMARY result; all v2 numbers POST-HOC)
+          </h3>
+          <p class="caveat-box">
+            Method chosen after v1 results on these splits were known; fitted on fit+tune splits only (empirical tune calibration - NO coverage guarantee: the tune rows also selected v1 hyperparameters and compared variants). Replay/test numbers below are post-hoc measurements, never untouched confirmation. v1 above remains the baseline and the shipped stable version.
+          </p>
+
+          <div class="sticky-table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Metric / Dimension</th>
+                  <th>v1 (frozen baseline)</th>
+                  <th>v2 (post-hoc)</th>
+                  <th>Tradeoff Analysis</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Band coverage (replay, equal-unit)</td>
+                  <td style="font-family:var(--font-mono);">{{ "%.0f"|format(100*v.replay_band_v2.v1_coverage_equal_unit) }}%</td>
+                  <td style="font-family:var(--font-mono);">{{ "%.0f"|format(100*v.replay_band_v2.coverage_equal_unit) }}% [{{ "%.0f"|format(100*v.replay_band_v2.coverage_ci[0]) }}%, {{ "%.0f"|format(100*v.replay_band_v2.coverage_ci[1]) }}%]</td>
+                  <td rowspan="2">
+                    {% if v.replay_band_v2.width_equal_unit > 1.5 * v.replay_band_v2.v1_width_equal_unit %}
+                      <span class="chip chip-flag">coverage bought with a much wider band ({{ "%.1f"|format(v.replay_band_v2.width_equal_unit / v.replay_band_v2.v1_width_equal_unit) }}x) - usefulness of the band is degraded; not a clean win</span>
+                    {% elif v.replay_band_v2.coverage_equal_unit > v.replay_band_v2.v1_coverage_equal_unit %}
+                      higher coverage for a moderately wider band
+                    {% else %}
+                      little change
+                    {% endif %}
+                  </td>
+                </tr>
+                <tr>
+                  <td>Band mean width (cycles)</td>
+                  <td style="font-family:var(--font-mono);">{{ "%.0f"|format(v.replay_band_v2.v1_width_equal_unit) }}</td>
+                  <td style="font-family:var(--font-mono);">{{ "%.0f"|format(v.replay_band_v2.width_equal_unit) }}</td>
+                </tr>
+                <tr>
+                  <td>Warning policy (first-alert)</td>
+                  <td style="font-family:var(--font-mono);">q50 &le; {{ r.replay.warning.horizon_N }} (v1)</td>
+                  <td style="font-family:var(--font-mono);">
+                    {{ v.replay_warning_v2.policy }}{% if v.replay_warning_v2.policy == "persistence_3" %} (3 consecutive cycles){% endif %}
+                    {% if r.subset == "FD004" %}
+                      <br><span class="chip chip-caveat" style="margin-top:2px;">selected candidate added after replay outcomes were known (post-hoc candidate-set expansion, disclosed) - exploratory only</span>
+                    {% endif %}
+                  </td>
+                  <td></td>
+                </tr>
+                <tr>
+                  <td>Catch / premature / miss (replay)</td>
+                  <td style="font-family:var(--font-mono);">{{ "%.0f"|format(100*v.replay_warning_v2.v1_warning.catch_fraction) }}% / {{ "%.0f"|format(100*v.replay_warning_v2.v1_warning.premature_unit_fraction) }}% / {{ "%.0f"|format(100*v.replay_warning_v2.v1_warning.miss_fraction) }}%</td>
+                  <td style="font-family:var(--font-mono);">{{ "%.0f"|format(100*v.replay_warning_v2.catch_fraction) }}% / {{ "%.0f"|format(100*v.replay_warning_v2.premature_unit_fraction) }}% / {{ "%.0f"|format(100*v.replay_warning_v2.miss_fraction) }}%</td>
+                  <td>
+                    median lead {{ v.replay_warning_v2.lead_time_cycles.median }} vs v1 {{ v.replay_warning_v2.v1_warning.lead_time_cycles.median }} cycles
+                    {% if v.replay_warning_v2.miss_fraction > v.replay_warning_v2.v1_warning.miss_fraction %}
+                      <br><span class="chip chip-flag">misses INCREASED: {{ "%.0f"|format(100*v.replay_warning_v2.v1_warning.miss_fraction) }}% -> {{ "%.0f"|format(100*v.replay_warning_v2.miss_fraction) }}% - the tune-only selection rule had no miss constraint; disclosed, not hidden</span>
+                    {% endif %}
+                  </td>
+                </tr>
+                <tr>
+                  <td>Test-endpoint band coverage</td>
+                  <td style="font-family:var(--font-mono);">{{ "%.0f"|format(100*v.test_endpoint_band_v2.v1_coverage) }}%</td>
+                  <td style="font-family:var(--font-mono);">{{ "%.0f"|format(100*v.test_endpoint_band_v2.coverage) }}%</td>
+                  <td>width {{ "%.0f"|format(v.test_endpoint_band_v2.v1_width_mean) }} -> {{ "%.0f"|format(v.test_endpoint_band_v2.width_mean) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p class="honesty-notice" style="margin-top:var(--space-2);">
+            Warning-policy candidates (all, incl. rejects; tune-split scores only - selection never used replay/test): {% for k, c in v.warning_policy_selection.candidates_tune.items() %}{{ k }}: catch {{ "%.0f"|format(100*c.catch_fraction) }}% premature {{ "%.0f"|format(100*c.premature_unit_fraction) }}%{% if k == v.warning_policy_selection.selected %} <b>(selected by predeclared tune-only rule)</b>{% endif %}; {% endfor %}Rule (declared before candidate scoring; applies to the rule only, not to the candidate set): tune catch not worse than v1, then minimum tune premature; if none qualifies, v1 kept. {% if r.subset == 'FD004' %}persistence_3 was ADDED in run 2 after run-1 replay results were seen - that candidate is itself post-hoc; run-1 output archived in results/archive/. {% endif %}Full registry timeline incl. q90 timing disclosed in evaluate_v2.py.
+          </p>
+        </div>
+      {% endif %}
+    </div>
+  {% endfor %}
+
+  <div class="caveat-box" style="margin-top:var(--space-4);">
+    FD004 note: files as downloaded contain 249 train / 248 test units; the bundled readme says 248/249. File contents used as-is; discrepancy disclosed, not silently resolved. Data: NASA C-MAPSS, downloaded from the PCOE repository; not redistributed (no explicit license terms found).
+  </div>
+</div>
+{% endblock %}

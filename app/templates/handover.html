@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% block title %}EVIDENT - Shift Handover Summary{% endblock %}
+{% block content %}
+<div class="page-container">
+  <div class="page-header print-header">
+    <div>
+      <h1 class="page-title">Shift Handover Summary</h1>
+      <p class="page-desc" style="color:var(--text-main); font-weight:600;">
+        Generated from the local audit log. Not a work order. Not a maintenance record. Shows logged events only, not current fleet state.
+      </p>
+      <div style="font-size:var(--text-xs); color:var(--text-dim); margin-top:4px;">
+        Generated as of: <span style="font-family:var(--font-mono);">{{ as_of }}</span> · Subset: <b>{{ subset or "All Subsets" }}</b> · Policy: <b>{{ policy or "All Policies" }}</b>
+      </div>
+    </div>
+    <div style="display:flex; gap:var(--space-2);">
+      <button class="btn btn-primary" onclick="window.print()">Print Handover Report 🖨</button>
+    </div>
+  </div>
+
+  <div class="caveat-box">
+    <b>Audit Log Limitation Notice:</b> The log records only what was displayed or imported and what was verdicted. It cannot show which units are CURRENTLY flagged in the fleet or currently unreviewed. Unseen replay transitions are not logged.
+  </div>
+
+  {% if total_operational == 0 %}
+    <div class="card" style="padding:2.5rem; text-align:center;">
+      <h3 style="color:var(--text-muted); margin-bottom:0.5rem;">No displayed flags, review verdicts, or imports are recorded in this log.</h3>
+      <p class="honesty-notice">Review flagged units or import operational data to record audit events.</p>
+    </div>
+  {% else %}
+    <!-- Section 1: Displayed flags with no verdict recorded in this log -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <span>Displayed flags with no verdict recorded in this log</span>
+          <span class="chip chip-flag">{{ unverdicted_flags|length }} event(s)</span>
+        </div>
+      </div>
+      <p class="honesty-notice" style="margin-bottom:var(--space-2);">
+        Flagged states that were displayed on screen to a reviewer (or produced during import) where no subsequent human verdict exists for the exact same unit, cycle, policy, and source in this local log as of {{ as_of }}.
+      </p>
+
+      {% if unverdicted_flags %}
+        <div style="overflow-x:auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Logged At</th>
+                <th>Source / Channel</th>
+                <th>Unit</th>
+                <th>Cycle</th>
+                <th>Policy</th>
+                <th>Upload SHA256</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for f in unverdicted_flags %}
+                <tr>
+                  <td style="font-family:var(--font-mono);">{{ f.ts }}</td>
+                  <td>{{ f.model_subset or f.subset }} ({{ "operational import" if f.upload_sha256 else "simulator replay" }})</td>
+                  <td style="font-family:var(--font-mono); font-weight:600;">{{ f.unit }}</td>
+                  <td style="font-family:var(--font-mono);">{{ f.cycle }}</td>
+                  <td class="caveat">{{ f.policy }}</td>
+                  <td style="font-family:var(--font-mono);">{{ (f.upload_sha256 or "-")[:16] }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% elif flags|length > 0 %}
+        <p style="padding:0.5rem 0; color:var(--ok-green); font-size:var(--text-sm);">
+          All displayed flags in this log have recorded review verdicts.
+        </p>
+      {% else %}
+        <p style="padding:0.5rem 0; color:var(--text-muted); font-size:var(--text-sm);">
+          No displayed flags recorded in this log.
+        </p>
+      {% endif %}
+    </div>
+
+    <!-- Section 2: Review Verdicts Recorded in Shift -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <span>Review Verdicts Recorded (Reviewer Opinions)</span>
+          <span class="chip chip-ok">{{ verdicts|length }} verdict(s)</span>
+        </div>
+      </div>
+      <p class="honesty-notice" style="margin-bottom:var(--space-2);">
+        Recorded engineer opinions logged during replay inspection or file import review.
+      </p>
+
+      {% if verdicts %}
+        <div style="overflow-x:auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Logged At</th>
+                <th>Source</th>
+                <th>Unit</th>
+                <th>Cycle</th>
+                <th>Policy</th>
+                <th>Engineer Verdict (Opinion)</th>
+                <th>Flag at Cycle</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for v in verdicts %}
+                <tr>
+                  <td style="font-family:var(--font-mono);">{{ v.ts }}</td>
+                  <td>{{ v.model_subset or v.subset }}</td>
+                  <td style="font-family:var(--font-mono); font-weight:600;">{{ v.unit }}</td>
+                  <td style="font-family:var(--font-mono);">{{ v.cycle }}</td>
+                  <td class="caveat">{{ v.policy }}</td>
+                  <td>
+                    <span class="chip {% if v.verdict == 'reviewed_warrants_inspection' %}chip-flag{% else %}chip-ok{% endif %}">
+                      {{ v.verdict }} (reviewer opinion)
+                    </span>
+                  </td>
+                  <td>
+                    {% if v.flag_state_at_cycle is not none %}
+                      {{ "flagged" if v.flag_state_at_cycle else "quiet" }}
+                    {% else %}
+                      -
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p style="padding:0.5rem 0; color:var(--text-muted);">No review verdicts recorded in this log.</p>
+      {% endif %}
+    </div>
+
+    <!-- Section 3: All Displayed Flag Events -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <span>All Flag Events Displayed to Reviewers</span>
+          <span class="chip chip-unreviewed">{{ flags|length }} event(s)</span>
+        </div>
+      </div>
+      <p class="honesty-notice" style="margin-bottom:var(--space-2);">
+        Every instance where a flagged unit/cycle was displayed on screen to a reviewer or generated upon file upload.
+      </p>
+
+      {% if flags %}
+        <div style="overflow-x:auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Logged At</th>
+                <th>Source</th>
+                <th>Unit</th>
+                <th>Cycle</th>
+                <th>Policy</th>
+                <th>Upload SHA256</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for f in flags %}
+                <tr>
+                  <td style="font-family:var(--font-mono);">{{ f.ts }}</td>
+                  <td>{{ f.model_subset or f.subset }}</td>
+                  <td style="font-family:var(--font-mono);">{{ f.unit }}</td>
+                  <td style="font-family:var(--font-mono);">{{ f.cycle }}</td>
+                  <td class="caveat">{{ f.policy }}</td>
+                  <td style="font-family:var(--font-mono);">{{ (f.upload_sha256 or "-")[:16] }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p style="padding:0.5rem 0; color:var(--text-muted);">No displayed flags recorded in this log.</p>
+      {% endif %}
+    </div>
+
+    <!-- Section 4: Operational Imports -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <span>Operational File Imports</span>
+          <span class="chip chip-caveat">{{ imports|length }} upload(s)</span>
+        </div>
+      </div>
+      {% if imports %}
+        <div style="overflow-x:auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Model Subset</th>
+                <th>Policy</th>
+                <th>Units Ingested</th>
+                <th>SHA256 Digest</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for imp in imports %}
+                <tr>
+                  <td style="font-family:var(--font-mono);">{{ imp.ts }}</td>
+                  <td>{{ imp.subset }}</td>
+                  <td>{{ imp.policy }}</td>
+                  <td>{{ imp.units|length }} unit(s)</td>
+                  <td style="font-family:var(--font-mono);">{{ imp.upload_sha256 }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p style="padding:0.5rem 0; color:var(--text-muted);">No operational file imports recorded in this log.</p>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
+

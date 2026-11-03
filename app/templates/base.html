@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en" data-theme="dark" data-density="comfortable" data-text-size="normal">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}EVIDENT (working name) - Watch Floor{% endblock %}</title>
+  <link rel="stylesheet" href="/static/css/tokens.css">
+  <link rel="stylesheet" href="/static/css/layout.css">
+  <link rel="stylesheet" href="/static/css/components.css">
+  <link rel="stylesheet" href="/static/css/print.css" media="print">
+  <script src="/static/js/prefs.js"></script>
+</head>
+<body>
+  <!-- Accessible skip link for keyboard users -->
+  <a href="#main-content" class="skip-link">Skip to workspace</a>
+
+  <header class="app-header entry-animate-header">
+    <div class="header-primary">
+      <div class="brand-section">
+        <a href="/?subset={{ active_subset }}{% if active_version == 'v2' %}&version=v2{% endif %}" class="brand-title">
+          <span>EVIDENT</span>
+          <span class="brand-subtitle">(working name)</span>
+        </a>
+
+        <!-- Dataset Selector -->
+        <nav class="subset-nav" aria-label="C-MAPSS Subsets">
+          {% for s in all_subsets %}
+            <a href="?subset={{ s }}{% if active_version == 'v2' %}&version=v2{% endif %}" class="subset-btn {% if s == active_subset %}active{% endif %}">
+              {{ s }}
+            </a>
+          {% endfor %}
+        </nav>
+      </div>
+
+      <!-- Center: Active Policy Badge or Multiple-Policies Header -->
+      <div class="policy-header-area">
+        {% if active_endpoint == 'scoreboard' %}
+          <span class="policy-badge multi-policy">Policies: v1 stable (primary) and v2 exploratory shown separately</span>
+        {% elif active_endpoint in ['audit', 'handover'] %}
+          <span class="policy-badge multi-policy">records of multiple policies, each row shows its own</span>
+        {% elif active_policy_name == 'UNAVAILABLE' %}
+          <span class="policy-badge v1-stable" style="color:var(--chart-truth);">UNAVAILABLE fallback</span>
+        {% elif active_exploratory %}
+          <a href="?subset={{ active_subset }}&version=v1" class="policy-badge v2-exploratory" title="Switch to v1 stable policy">
+            <span style="font-size:0.65rem; letter-spacing:0.04em;">EXPLORATORY</span> {{ active_policy_label }}
+          </a>
+        {% else %}
+          <a href="?subset={{ active_subset }}&version=v2" class="policy-badge v1-stable" title="Switch to v2 exploratory policy">
+            <span style="font-size:0.65rem; letter-spacing:0.04em;">STABLE</span> {{ active_policy_label }}
+          </a>
+        {% endif %}
+      </div>
+
+      <!-- Right: Navigation & Controls -->
+      <div class="header-controls">
+        <nav class="primary-nav" aria-label="Main Navigation">
+          <a href="/?subset={{ active_subset }}{% if active_version == 'v2' %}&version=v2{% endif %}" class="nav-link {% if active_endpoint in ['fleet', 'unit_view'] %}active{% endif %}">Review</a>
+          <a href="/import{% if active_version == 'v2' %}?version=v2{% endif %}" class="nav-link {% if active_endpoint in ['import_view', 'import_unit'] %}active{% endif %}">Import</a>
+          <a href="/scoreboard" class="nav-link {% if active_endpoint == 'scoreboard' %}active{% endif %}">Scoreboard</a>
+          <a href="/audit" class="nav-link {% if active_endpoint == 'audit' %}active{% endif %}">Audit</a>
+          <a href="/handover" class="nav-link {% if active_endpoint == 'handover' %}active{% endif %}">Handover</a>
+        </nav>
+
+        <button id="theme-toggle-btn" class="btn-icon" title="Toggle theme (t)" aria-label="Toggle theme">Theme</button>
+        <button id="settings-toggle-btn" class="btn-icon" title="Workspace Preferences (s)" aria-label="Settings">Prefs</button>
+        <button id="shortcuts-help-btn" class="btn-icon" title="Keyboard Shortcuts (?)" aria-label="Shortcuts">?</button>
+      </div>
+    </div>
+
+    <!-- Persistent Scope Strip -->
+    <div class="scope-strip">
+      <div class="scope-text">
+        <span class="scope-pill">Scope</span>
+        <span>Advisory demo on NASA C-MAPSS turbofan simulation data. Never commands any machine. Flag = the selected policy's trigger condition is met, not a failure probability.</span>
+      </div>
+      <button class="details-trigger" onclick="toggleScopeDetails()" aria-expanded="false" aria-controls="scope-details-pane">What this means &#9662;</button>
+    </div>
+
+    <div id="scope-details-pane" class="scope-details-pane">
+      <div style="max-width: 1000px; line-height: 1.5;">
+        <p style="margin-bottom: 0.35rem;">
+          <b>Active Policy Trigger:</b> <code>{{ active_policy_label }}</code>
+        </p>
+        <p>
+          This product is an advisory remaining-useful-life (RUL) replay platform on NASA C-MAPSS turbofan engine simulation data (FD001-FD004).
+          It does not command real machinery, predict exact failure probabilities, or manage live fleet work orders.
+          All numbers are derived from the precomputed frozen models in <code>results/</code>.
+        </p>
+      </div>
+    </div>
+  </header>
+
+  <main id="main-content" class="main-shell">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Preferences Drawer -->
+  <div id="drawer-backdrop" class="drawer-backdrop" onclick="toggleDrawer(false)"></div>
+  <aside id="settings-drawer" class="settings-drawer" role="dialog" aria-label="Workspace Settings">
+    <div class="drawer-header">
+      <h3 class="drawer-title">Workspace Settings</h3>
+      <button class="btn-icon" onclick="toggleDrawer(false)" aria-label="Close settings">&#10005;</button>
+    </div>
+    <div class="drawer-body">
+      <div>
+        <label style="font-size:var(--text-xs); font-weight:600; display:block; margin-bottom:0.35rem;">Theme</label>
+        <select id="pref-theme" class="queue-search" style="width:100%;">
+          <option value="dark">Dark Graphite (Default)</option>
+          <option value="light">Light Precision</option>
+          <option value="system">System Preference</option>
+        </select>
+      </div>
+
+      <div>
+        <label style="font-size:var(--text-xs); font-weight:600; display:block; margin-bottom:0.35rem;">Density</label>
+        <select id="pref-density" class="queue-search" style="width:100%;">
+          <option value="comfortable">Comfortable</option>
+          <option value="compact">Compact (High Information)</option>
+        </select>
+      </div>
+
+      <div>
+        <label style="font-size:var(--text-xs); font-weight:600; display:block; margin-bottom:0.35rem;">Text Size</label>
+        <select id="pref-text-size" class="queue-search" style="width:100%;">
+          <option value="normal">Normal (14px)</option>
+          <option value="large">Large (16px)</option>
+        </select>
+      </div>
+
+      <div>
+        <label style="font-size:var(--text-xs); font-weight:600; display:block; margin-bottom:0.35rem;">Starting View Preset</label>
+        <select id="pref-starting-view" class="queue-search" style="width:100%;">
+          <option value="engineer">Engineer (Queue + Evidence)</option>
+          <option value="manager">Manager (Fleet Overview)</option>
+          <option value="analyst">Analyst (Scoreboard + Diagnostics)</option>
+        </select>
+        <span style="font-size:0.7rem; color:var(--text-dim); display:block; margin-top:2px;">Starting layout view only - not a user role or permission.</span>
+      </div>
+
+      <div>
+        <label style="font-size:var(--text-xs); font-weight:600; display:block; margin-bottom:0.35rem;">Default Dataset</label>
+        <select id="pref-default-subset" class="queue-search" style="width:100%;">
+          <option value="FD001">FD001 (Sea Level, 1 Condition)</option>
+          <option value="FD002">FD002 (6 Conditions)</option>
+          <option value="FD003">FD003 (Sea Level, 2 Fault Modes)</option>
+          <option value="FD004">FD004 (6 Conditions, 2 Fault Modes)</option>
+        </select>
+      </div>
+
+      <div>
+        <label style="font-size:var(--text-xs); font-weight:600; display:block; margin-bottom:0.35rem;">Default "As Of" Cycle</label>
+        <input type="number" id="pref-default-cycle" class="queue-search" style="width:100%;" min="1" max="500" value="50">
+      </div>
+
+      <div>
+        <label style="font-size:var(--text-xs); font-weight:600; display:block; margin-bottom:0.35rem;">Default Policy View</label>
+        <select id="pref-default-policy" class="queue-search" style="width:100%;">
+          <option value="v1">v1 Stable (Default)</option>
+          <option value="v2">v2 Exploratory</option>
+        </select>
+      </div>
+
+      <div>
+        <label style="font-size:var(--text-xs); font-weight:600; display:block; margin-bottom:0.35rem;">Visible Queue Columns</label>
+        <div style="display:flex; flex-direction:column; gap:0.35rem; font-size:var(--text-xs);">
+          <label class="toggle-label"><input type="checkbox" id="pref-col-cycle" data-col="cycle" checked> <span>Cycle</span></label>
+          <label class="toggle-label"><input type="checkbox" id="pref-col-q50" data-col="q50" checked> <span>Predicted Median</span></label>
+          <label class="toggle-label"><input type="checkbox" id="pref-col-band" data-col="band" checked> <span>Band</span></label>
+          <label class="toggle-label"><input type="checkbox" id="pref-col-flag" data-col="flag" checked> <span>Flag State</span></label>
+          <label class="toggle-label"><input type="checkbox" id="pref-col-caveats" data-col="caveats" checked> <span>Caveats</span></label>
+          <label class="toggle-label"><input type="checkbox" id="pref-col-review" data-col="review" checked> <span>Review Status</span></label>
+        </div>
+      </div>
+
+      <div>
+        <label class="toggle-label" style="font-size:var(--text-xs);">
+          <input type="checkbox" id="pref-reduced-effects">
+          <span>Reduced effects / Minimal animations</span>
+        </label>
+      </div>
+
+      <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border-base);">
+        <button class="btn" style="width: 100%; color: var(--flag-amber);" onclick="EvidentPrefs.reset()">Reset All Preferences</button>
+      </div>
+    </div>
+  </aside>
+
+  <script src="/static/js/chart.js"></script>
+  <script src="/static/js/queue.js"></script>
+  <script src="/static/js/evidence.js"></script>
+  <script src="/static/js/verdict.js"></script>
+  <script src="/static/js/shortcuts.js"></script>
+  <script>
+    function toggleScopeDetails() {
+      const pane = document.getElementById('scope-details-pane');
+      const btn = document.querySelector('.details-trigger');
+      if (pane) {
+        const isOpen = pane.classList.toggle('open');
+        btn.setAttribute('aria-expanded', isOpen);
+        btn.innerHTML = isOpen ? 'What this means &#9652;' : 'What this means &#9662;';
+      }
+    }
+
+    function toggleDrawer(open) {
+      const drawer = document.getElementById('settings-drawer');
+      const backdrop = document.getElementById('drawer-backdrop');
+      if (drawer) {
+        const isOpen = open !== undefined ? open : !drawer.classList.contains('open');
+        drawer.classList.toggle('open', isOpen);
+        if (backdrop) backdrop.classList.toggle('open', isOpen);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const themeBtn = document.getElementById('theme-toggle-btn');
+      if (themeBtn) {
+        themeBtn.addEventListener('click', () => {
+          const cur = EvidentPrefs.get('theme');
+          const next = cur === 'dark' ? 'light' : 'dark';
+          EvidentPrefs.set('theme', next);
+          EvidentPrefs.apply();
+        });
+      }
+
+      const settingsBtn = document.getElementById('settings-toggle-btn');
+      if (settingsBtn) {
+        settingsBtn.addEventListener('click', () => toggleDrawer());
+      }
+
+      const shortcutsBtn = document.getElementById('shortcuts-help-btn');
+      if (shortcutsBtn) {
+        shortcutsBtn.addEventListener('click', () => {
+          const m = document.getElementById('shortcuts-modal');
+          if (m) m.classList.add('open');
+        });
+      }
+
+      // Sync settings drawer controls
+      const pTheme = document.getElementById('pref-theme');
+      if (pTheme) {
+        pTheme.value = EvidentPrefs.get('theme');
+        pTheme.addEventListener('change', (e) => {
+          EvidentPrefs.set('theme', e.target.value);
+          EvidentPrefs.apply();
+        });
+      }
+      const pDensity = document.getElementById('pref-density');
+      if (pDensity) {
+        pDensity.value = EvidentPrefs.get('density');
+        pDensity.addEventListener('change', (e) => {
+          EvidentPrefs.set('density', e.target.value);
+          EvidentPrefs.apply();
+        });
+      }
+      const pTextSize = document.getElementById('pref-text-size');
+      if (pTextSize) {
+        pTextSize.value = EvidentPrefs.get('textSize');
+        pTextSize.addEventListener('change', (e) => {
+          EvidentPrefs.set('textSize', e.target.value);
+          EvidentPrefs.apply();
+        });
+      }
+      const pReduced = document.getElementById('pref-reduced-effects');
+      if (pReduced) {
+        pReduced.checked = EvidentPrefs.get('reducedEffects');
+        pReduced.addEventListener('change', (e) => {
+          EvidentPrefs.set('reducedEffects', e.target.checked);
+          EvidentPrefs.apply();
+        });
+      }
+      const pStarting = document.getElementById('pref-starting-view');
+      if (pStarting) {
+        pStarting.value = EvidentPrefs.get('startingView');
+        pStarting.addEventListener('change', (e) => {
+          EvidentPrefs.set('startingView', e.target.value);
+        });
+      }
+
+      // Default Dataset
+      const pDefSubset = document.getElementById('pref-default-subset');
+      if (pDefSubset) {
+        pDefSubset.value = EvidentPrefs.get('defaultSubset') || 'FD001';
+        pDefSubset.addEventListener('change', (e) => {
+          EvidentPrefs.set('defaultSubset', e.target.value);
+        });
+      }
+
+      // Default Cycle
+      const pDefCycle = document.getElementById('pref-default-cycle');
+      if (pDefCycle) {
+        pDefCycle.value = EvidentPrefs.get('defaultCycle') || 50;
+        pDefCycle.addEventListener('change', (e) => {
+          const val = parseInt(e.target.value, 10);
+          if (!isNaN(val) && val > 0) {
+            EvidentPrefs.set('defaultCycle', val);
+          }
+        });
+      }
+
+      // Default Policy
+      const pDefPolicy = document.getElementById('pref-default-policy');
+      if (pDefPolicy) {
+        pDefPolicy.value = EvidentPrefs.get('defaultPolicy') || 'v1';
+        pDefPolicy.addEventListener('change', (e) => {
+          EvidentPrefs.set('defaultPolicy', e.target.value);
+        });
+      }
+
+      // Visible Queue Columns
+      const visCols = EvidentPrefs.get('visibleColumns') || {};
+      ['cycle', 'q50', 'band', 'flag', 'caveats', 'review'].forEach(col => {
+        const el = document.getElementById(`pref-col-${col}`);
+        if (el) {
+          el.checked = visCols[col] !== false;
+          el.addEventListener('change', (e) => {
+            const current = EvidentPrefs.get('visibleColumns') || {};
+            current[col] = e.target.checked;
+            EvidentPrefs.set('visibleColumns', current);
+            EvidentPrefs.applyColumnVisibility();
+          });
+        }
+      });
+    });
+  </script>
+</body>
+</html>

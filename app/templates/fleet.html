@@ -1,0 +1,447 @@
+{% extends "base.html" %}
+{% block title %}EVIDENT - Review Workspace ({{ subset }}){% endblock %}
+{% block content %}
+<div class="workspace-layout">
+  <!-- Left Column: Review Queue -->
+  <section class="queue-pane" aria-label="Review Queue">
+    <div class="queue-header-area">
+      <div class="queue-title-row">
+        <div>
+          <h1 style="font-size: var(--text-base); font-weight: 700;">Fleet Review Queue</h1>
+          <div id="queue-count-summary" style="font-size: var(--text-xs); color: var(--text-muted); margin-top: 2px;">
+            Loading review queue...
+          </div>
+        </div>
+
+        {% if demo %}
+          <button class="btn btn-primary" onclick="if(window.evidentQueue) window.evidentQueue.selectUnit({{ demo.unit }})" style="font-size: 0.7rem; padding: 0.2rem 0.5rem;" title="Warning flag at cycle {{ demo.first_flag_cycle }}, recorded failure at cycle {{ demo.failure_cycle }}">
+            Start with demo unit ({{ demo.unit }})
+          </button>
+        {% endif %}
+      </div>
+
+      <!-- Controls: Cycle, Filters, Sort, Search -->
+      <div class="queue-controls-row">
+        <!-- Quick Cycle Presets & Numeric Input -->
+        <div class="queue-cycle-select">
+          <span>As of Cycle:</span>
+          {% for c in [20, 50, 100, 200] %}
+            <a href="/?subset={{ subset }}&cycle={{ c }}{% if version == 'v2' %}&version=v2{% endif %}" class="btn-icon" style="text-decoration:none; padding:2px 6px; font-family:var(--font-mono); {% if c == cycle %}border-color:var(--accent-blue); color:var(--accent-blue); font-weight:bold;{% endif %}">
+              {{ c }}
+            </a>
+          {% endfor %}
+          <input type="number" id="queue-cycle-input" class="cycle-input" value="{{ cycle }}" min="1" max="500" title="Enter any cycle number and press enter" />
+        </div>
+
+        <!-- Filter Chips -->
+        <div class="filter-group">
+          <button class="filter-btn" data-filter="flagged">Flagged</button>
+          <button class="filter-btn" data-filter="unreviewed">Unreviewed</button>
+          <button class="filter-btn active" data-filter="all">All</button>
+          <button class="filter-btn" data-filter="watched">★ Watched</button>
+        </div>
+
+        <!-- Search -->
+        <input type="text" id="queue-search-input" class="queue-search" placeholder="Search unit..." aria-label="Search by unit number" />
+
+        <!-- Sort -->
+        <select id="queue-sort-select" class="queue-search" aria-label="Sort queue">
+          <option value="q50">Sort: Predicted remaining</option>
+          <option value="unit">Sort: Unit number</option>
+          <option value="cycle">Sort: Cycle index</option>
+        </select>
+      </div>
+
+      <!-- Policy Switch Note -->
+      <div style="font-size: var(--text-xs); color: var(--text-dim); line-height: 1.3;">
+        Warning policy: <b>{{ policy_label }}</b>.
+        {% if version == "v1" %}
+          <a href="/?subset={{ subset }}&cycle={{ cycle }}&version=v2" style="color: var(--accent-blue);">switch to v2 exploratory policy view</a>
+        {% else %}
+          <a href="/?subset={{ subset }}&cycle={{ cycle }}" style="color: var(--accent-blue);">switch to v1 stable policy view</a>
+        {% endif %}
+        (Flags, first-flag markers and verdict logs follow the selected policy; the v1 stable version remains the default and the scoreboard's primary.)
+      </div>
+    </div>
+
+    <!-- Review Queue Table -->
+    <div class="queue-table-wrap">
+      <table class="data-table" role="table">
+        <thead>
+          <tr role="row">
+            <th scope="col" class="col-unit">Unit</th>
+            <th scope="col" class="col-cycle">Cycle</th>
+            <th scope="col" class="col-q50">Predicted remaining (median)</th>
+            <th scope="col" class="col-band">Band (nominal 80%; measured coverage {{ cov }}% - unvalidated)</th>
+            <th scope="col" class="col-flag">Warning flag</th>
+            <th scope="col" class="col-caveats">Caveats</th>
+            <th scope="col" class="col-review">Review</th>
+          </tr>
+        </thead>
+        <tbody id="queue-table-body" class="entry-animate-queue">
+          {% for r in rows %}
+            <tr class="queue-row {% if loop.first %}selected{% endif %}" data-unit="{{ r.unit }}" tabindex="0" role="row">
+              <td class="col-unit">
+                <button class="watch-btn btn-icon" data-unit="{{ r.unit }}" title="Toggle watch" style="padding: 2px 4px; font-size: 11px;">☆</button>
+                <a href="/unit/{{ subset }}/{{ r.unit }}{% if version == 'v2' %}?version=v2{% endif %}" style="text-decoration:none; color:inherit; font-family:var(--font-mono); font-weight:600;">{{ r.unit }}</a>
+              </td>
+              <td class="col-cycle">{{ r.cycle }}</td>
+              <td class="col-q50" style="font-family: var(--font-mono); font-weight:600;">{{ r.q50 }}</td>
+              <td class="col-band" style="font-family: var(--font-mono); color: var(--text-muted);">{{ r.band }}</td>
+              <td class="col-flag">{% if r.flag %}<span class="chip chip-flag">FLAG</span>{% else %}<span class="chip chip-noflag">no flag</span>{% endif %}</td>
+              <td class="col-caveats">
+                {% if r.limited %}<span class="chip chip-caveat">limited history</span> {% endif %}
+                {% if r.envelope %}<span class="chip chip-caveat">outside envelope</span>{% endif %}
+              </td>
+              <td class="col-review">
+                {% if r.review %}
+                  {% if r.review.status == 'reviewed_at_this_cycle' %}
+                    <span class="chip chip-reviewed">Reviewed at this cycle</span>
+                  {% elif r.review.status == 'reviewed_earlier' %}
+                    <span class="chip chip-reviewed-earlier">Reviewed earlier (cycle {{ r.review.cycle }})</span>
+                  {% elif r.review.status == 'reviewed_other_policy' %}
+                    <span class="chip chip-other-pol">Reviewed under {{ r.review.policy }}</span>
+                  {% endif %}
+                {% else %}
+                  <span class="chip chip-unreviewed">Unreviewed</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Bottom Caveat notice -->
+    <div style="padding: var(--space-2) var(--space-4); border-top: 1px solid var(--border-base); font-size: var(--text-xs); color: var(--text-dim);">
+      Replay-holdout units only (never used for training or tuning). Rows outside the training feature envelope carry a caveat flag - a descriptive screen, not a validated out-of-distribution detector. "Limited history" = fewer than 30 observed cycles (window features use available history).
+    </div>
+  </section>
+
+  <!-- Right Column: Evidence Panel -->
+  <section class="evidence-pane evidence-transition" aria-label="Evidence and Verification">
+    <div id="v2-default-warning" class="caveat-box" style="display:none; border-left-color: var(--flag-amber); background: var(--flag-amber-bg); color: var(--text-main); position: relative; margin: 0 0 var(--space-3) 0;">
+      <b>Notice:</b> Policy view opened as <b>v2 exploratory</b> via your saved workspace default. Version 2 is post-hoc tune-selected, not a validated improvement; v1 stable remains the baseline.
+      <button onclick="dismissV2Warning()" style="position:absolute; right:10px; top:8px; background:none; border:none; color:var(--text-main); cursor:pointer; font-size:1.1rem; line-height:1;" aria-label="Dismiss">&times;</button>
+    </div>
+    <!-- Evidence Header Strip -->
+    <div class="evidence-header">
+      <div class="unit-hero">
+        <span id="evidence-unit-id" class="unit-id">{{ subset }} Unit {{ rows[0].unit if rows else 1 }}</span>
+        <span id="evidence-cycle-meta" class="unit-cycle-meta">cycle {{ cycle }}</span>
+        <span id="evidence-policy-badge" class="policy-badge {% if exploratory %}v2-exploratory{% else %}v1-stable{% endif %}">
+          {% if exploratory %}v2 exploratory{% else %}v1 stable{% endif %}
+        </span>
+      </div>
+
+      <div class="step-controls">
+        <button id="step-prev-btn" class="btn" title="Previous cycle ([)">◀ Previous</button>
+        <button id="step-next-btn" class="btn" title="Next cycle (])">Next ▶</button>
+        <button id="first-flag-btn" class="btn" title="Jump to first flag cycle">First Flag</button>
+        <button id="latest-btn" class="btn" title="Jump to latest recorded cycle">Latest</button>
+        <button id="play-stream-btn" class="btn" title="Play / Pause Replay (Space)">▶ Play</button>
+        <select id="play-speed-select" class="queue-search" style="width: 65px;" aria-label="Playback speed">
+          <option value="1">1x</option>
+          <option value="2">2x</option>
+          <option value="4">4x</option>
+        </select>
+        <button id="compare-policies-btn" class="btn" style="border-style:dashed;">Compare Policies</button>
+      </div>
+    </div>
+
+    <!-- Cycle Scrubber Bar -->
+    <div class="scrubber-bar">
+      <span style="font-size: var(--text-xs); font-family: var(--font-mono); color: var(--text-muted);">Cycle <span id="scrubber-cycle-val">{{ cycle }}</span></span>
+      <input type="range" id="cycle-scrubber" class="scrubber-slider" min="1" max="300" value="{{ cycle }}" aria-label="Cycle scrubber slider" />
+    </div>
+
+    <!-- Primary RUL Chart Card -->
+    <div class="chart-container">
+      <div class="chart-header-row">
+        <div style="font-size: var(--text-sm); font-weight: 600;">Remaining Useful Life Forecast Trajectory</div>
+        
+        <div class="chart-toggles">
+          <label class="toggle-label" title="Empirical conformal tune calibration vs nominal 80% band">
+            <input type="checkbox" id="band-v2-toggle" />
+            <span>Show v2 calibrated band</span>
+          </label>
+
+          <label class="toggle-label" title="Evaluation overlay only - hidden during normal engineering review">
+            <input type="checkbox" id="truth-overlay-toggle" />
+            <span style="color: var(--chart-truth);">Show retrospective ground truth (evaluation overlay)</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Uncertainty Band Honesty Note Attached Directly to Chart -->
+      <div id="chart-band-note" class="honesty-notice" style="border-left: 2px solid var(--accent-blue); padding-left: 0.5rem;">
+        v1 band: nominal 80%; measured coverage on held-out replay: {{ cov }}% - too narrow as fitted, unvalidated
+      </div>
+
+      <!-- SVG Chart Canvas Area -->
+      <div id="rul-chart-canvas" class="chart-canvas-wrap"></div>
+
+      <!-- Hover / Interactive Readout -->
+      <div id="rul-chart-readout" class="chart-readout">
+        <span>Hover over chart for cycle details.</span>
+      </div>
+    </div>
+
+    <!-- Forecast Metrics Summary Card -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Forecast Summary &amp; Status</div>
+        <div id="metric-status"><span class="chip chip-noflag">no flag</span></div>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric-box">
+          <span class="metric-label">Predicted Median (q50)</span>
+          <span id="metric-q50" class="metric-value">--</span>
+          <span class="metric-sub">Operating cycles remaining</span>
+        </div>
+
+        <div class="metric-box">
+          <span class="metric-label">Uncertainty Band</span>
+          <span id="metric-band" class="metric-value">--</span>
+          <span class="metric-sub">Nominal 80% [q10, q90]</span>
+        </div>
+
+        <div class="metric-box">
+          <span class="metric-label">Training-envelope screen</span>
+          <span id="metric-caveat" class="metric-value" style="font-size: var(--text-md);">--</span>
+          <span class="metric-sub">Descriptive min/max screen - not a validated detector</span>
+        </div>
+      </div>
+
+      <div id="evidence-flag-notice" style="margin-top: var(--space-3);"></div>
+    </div>
+
+    <!-- Evidence Card: Sensor Trends -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <span>Sensor Trend Context Signals</span>
+          <a id="quality-gate-link" href="/quality/{{ subset }}/{{ rows[0].unit if rows else 1 }}" class="btn" style="font-size:0.7rem; padding:2px 6px;">Quality Gate &rarr;</a>
+        </div>
+      </div>
+      <div id="sensors-container">
+        <div style="padding:1.5rem; text-align:center; color:var(--text-dim);">Loading sensor context signals...</div>
+      </div>
+    </div>
+
+    <!-- Engineer Verification Actions Card -->
+    <div class="verdict-actions-card">
+      <div class="card-header" style="margin-bottom: var(--space-2);">
+        <div class="card-title">Engineer Review Verdict</div>
+        <span style="font-size: var(--text-xs); color: var(--text-dim);">(human review opinion logged to local audit trail)</span>
+      </div>
+
+      <div id="verdict-confirmation-live" class="confirmation-live" aria-live="polite"></div>
+
+      <form id="engineer-verdict-form" method="post" action="/verify">
+        <input type="hidden" id="verdict-subset" name="subset" value="{{ subset }}">
+        <input type="hidden" id="verdict-unit" name="unit" value="{{ rows[0].unit if rows else 1 }}">
+        <input type="hidden" id="verdict-cycle" name="cycle" value="{{ cycle }}">
+        <input type="hidden" id="verdict-policy" name="policy" value="{{ active_policy_name }}">
+        <input type="hidden" id="verdict-version" name="version" value="{{ version }}">
+
+        <div class="verdict-buttons-row">
+          <button type="submit" name="verdict" value="reviewed_warrants_inspection" class="btn-warrant">
+            Reviewed - warrants inspection
+          </button>
+          <button type="submit" name="verdict" value="reviewed_dismissed" class="btn-dismiss">
+            Reviewed - dismissed
+          </button>
+          <span style="font-size: var(--text-xs); color: var(--text-muted); margin-left: auto;">
+            Advisory only - never commands any machine action.
+          </span>
+        </div>
+      </form>
+
+      <!-- Past Recorded Verdicts for this Unit -->
+      <div style="margin-top: var(--space-3); border-top: 1px solid var(--border-muted); padding-top: var(--space-2);">
+        <span style="font-size: var(--text-xs); font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">Past review verdicts on this unit:</span>
+        <div id="past-verdicts-list">
+          <span style="font-size: 0.75rem; color: var(--text-dim);">No previous verdicts logged.</span>
+        </div>
+      </div>
+
+      <!-- Engineer Free-text Notes -->
+      <div class="notes-container">
+        <span style="font-size: var(--text-xs); font-weight: 600; color: var(--text-muted);">Engineer Note (free text, not part of audit evidence):</span>
+        <div id="engineer-notes-list"></div>
+        <form id="engineer-note-form" class="note-form">
+          <input type="text" id="note-text-input" class="note-input" placeholder="Add engineering review note (max 500 chars)..." maxlength="500">
+          <button type="submit" class="btn">Add Note</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Optional Collapsed Illustrative Economics -->
+    <details class="card" style="margin-top: var(--space-2);">
+      <summary style="font-size: var(--text-xs); font-weight: 600; cursor: pointer; color: var(--text-muted);">
+        Illustrative economics (assumption placeholders, not measured savings)
+      </summary>
+      <div style="margin-top: var(--space-3);">
+        <table class="data-table" style="max-width: 600px;">
+          <tr><th>Quantity</th><th>Placeholder value</th><th>Status</th></tr>
+          <tr><td>Planned inspection within flagged window</td><td>1 cost unit</td><td>assumption, set in config</td></tr>
+          <tr><td>Unplanned failure (missed catch)</td><td>25 cost units</td><td>assumption, set in config</td></tr>
+        </table>
+        <p class="honesty-notice" style="margin-top: 0.5rem;">
+          These numbers frame the act-early vs act-late trade-off for discussion. They are unsourced placeholders, not vendor data, not measured on this fleet, and no downtime or cost savings are claimed from the warning statistics.
+        </p>
+      </div>
+    </details>
+  </section>
+</div>
+
+<!-- Policy Compare Modal -->
+<div id="policy-compare-modal" class="drawer-backdrop" style="display:none; align-items:center; justify-content:center;">
+  <div class="card" style="max-width: 720px; width: 90%; max-height: 85vh; overflow-y: auto; background: var(--bg-surface-elevated); box-shadow: var(--shadow-md);">
+    <div class="card-header">
+      <div class="card-title">Policy Comparison: v1 Stable vs v2 Exploratory</div>
+      <button class="btn-icon" onclick="document.getElementById('policy-compare-modal').style.display='none'">✕</button>
+    </div>
+    <div id="policy-compare-content"></div>
+  </div>
+</div>
+
+<script>
+  function dismissV2Warning() {
+    try {
+      sessionStorage.setItem('evident.v2_default_warned', '1');
+    } catch (e) {}
+    const el = document.getElementById('v2-default-warning');
+    if (el) el.style.display = 'none';
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    // Fix B: Check origin marker immediately on load BEFORE anything reads the URL
+    try {
+      if (sessionStorage.getItem('evident.v2_from_default') === '1') {
+        sessionStorage.removeItem('evident.v2_from_default');
+        if (!sessionStorage.getItem('evident.v2_default_warned')) {
+          const warnEl = document.getElementById('v2-default-warning');
+          if (warnEl) warnEl.style.display = 'block';
+          sessionStorage.setItem('evident.v2_default_warned', '1');
+        }
+      }
+    } catch (e) {}
+
+    const rawRows = {{ rows | tojson }};
+    const urlParams = new URLSearchParams(window.location.search);
+
+    // Fix 3e: Starting view preset when landing on bare / with no query params at all
+    const hasExplicitState = ['unit', 'subset', 'cycle', 'version', 'band', 'show_truth'].some(p => urlParams.has(p));
+    if (!hasExplicitState && window.location.pathname === '/') {
+      const startPreset = window.EvidentPrefs ? EvidentPrefs.get('startingView') : 'engineer';
+      if (startPreset === 'analyst') {
+        window.location.replace('/scoreboard');
+        return;
+      } else if (startPreset === 'manager') {
+        document.querySelector('.workspace-layout')?.classList.add('view-manager');
+      }
+    }
+
+    // Fix 3c, 3d, 3f: Precedence for subset, cycle, policy view
+    if (window.EvidentPrefs) {
+      const prefSubset = EvidentPrefs.get('defaultSubset') || 'FD001';
+      const prefCycle = EvidentPrefs.get('defaultCycle') || 50;
+      const prefPolicy = EvidentPrefs.get('defaultPolicy') || 'v1';
+
+      const serverSubset = "{{ subset }}";
+      const serverCycle = {{ cycle }};
+      const serverVersion = "{{ version }}";
+
+      let needsRedirect = false;
+      const newUrl = new URL(window.location.href);
+
+      if (!urlParams.has('subset') && prefSubset !== serverSubset) {
+        newUrl.searchParams.set('subset', prefSubset);
+        needsRedirect = true;
+      }
+      if (!urlParams.has('cycle') && parseInt(prefCycle, 10) !== serverCycle) {
+        newUrl.searchParams.set('cycle', prefCycle);
+        needsRedirect = true;
+      }
+      if (!urlParams.has('version') && prefPolicy === 'v2' && serverVersion !== 'v2') {
+        newUrl.searchParams.set('version', 'v2');
+        try {
+          sessionStorage.setItem('evident.v2_from_default', '1');
+        } catch (e) {}
+        needsRedirect = true;
+      }
+
+      if (needsRedirect) {
+        window.location.replace(newUrl.toString());
+        return;
+      }
+    }
+
+    // Fix 4: Precedence for unit: URL param -> first row unit
+    const paramUnit = urlParams.get('unit') ? parseInt(urlParams.get('unit'), 10) : null;
+    const initialUnit = paramUnit || ({{ rows[0].unit if rows else 1 }});
+    const initialCycle = {{ cycle }};
+
+    const initialTruth = urlParams.get('show_truth') === '1' || urlParams.get('show_truth') === 'true';
+    const initialBandV2 = urlParams.get('band') === 'v2';
+
+    // Initialize Review Queue
+    window.evidentQueue = new EvidentReviewQueue({
+      tableBody: document.getElementById('queue-table-body'),
+      countSummary: document.getElementById('queue-count-summary'),
+      searchInput: document.getElementById('queue-search-input'),
+      filterButtons: document.querySelectorAll('.filter-btn'),
+      sortSelect: document.getElementById('queue-sort-select'),
+      cycleInput: document.getElementById('queue-cycle-input'),
+      subset: "{{ subset }}",
+      cycle: initialCycle,
+      version: "{{ version }}",
+      activePolicy: "{{ active_policy_name }}",
+      initialUnit: initialUnit,
+      onSelectUnit: (unit, cycle) => {
+        if (window.evidentEvidence) {
+          window.evidentEvidence.loadUnit(unit, cycle, true);
+        }
+        const qLink = document.getElementById('quality-gate-link');
+        if (qLink) qLink.href = `/quality/{{ subset }}/${unit}{% if version == 'v2' %}?version=v2{% endif %}`;
+        if (window.loadNotes) window.loadNotes("{{ subset }}", unit);
+      }
+    });
+
+    window.evidentQueue.setRows(rawRows);
+
+    // Initialize Evidence Panel
+    window.evidentEvidence = new EvidentEvidencePanel({
+      container: document.querySelector('.evidence-pane'),
+      chartContainer: document.getElementById('rul-chart-canvas'),
+      sensorsContainer: document.getElementById('sensors-container'),
+      scrubber: document.getElementById('cycle-scrubber'),
+      stepPrevBtn: document.getElementById('step-prev-btn'),
+      stepNextBtn: document.getElementById('step-next-btn'),
+      firstFlagBtn: document.getElementById('first-flag-btn'),
+      latestBtn: document.getElementById('latest-btn'),
+      playBtn: document.getElementById('play-stream-btn'),
+      speedSelect: document.getElementById('play-speed-select'),
+      truthToggle: document.getElementById('truth-overlay-toggle'),
+      bandToggle: document.getElementById('band-v2-toggle'),
+      compareBtn: document.getElementById('compare-policies-btn'),
+      subset: "{{ subset }}",
+      version: "{{ version }}",
+      initialUnit: initialUnit,
+      initialCycle: initialCycle,
+      initialTruth: initialTruth,
+      initialBandV2: initialBandV2
+    });
+
+    // Load initial unit details
+    window.evidentEvidence.loadUnit(initialUnit, initialCycle, false);
+    if (window.loadNotes) window.loadNotes("{{ subset }}", initialUnit);
+
+    // Ensure queue selected state matches initialUnit
+    window.evidentQueue.selectUnit(initialUnit, false);
+  });
+</script>
+{% endblock %}

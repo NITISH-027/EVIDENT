@@ -1,0 +1,341 @@
+{
+ "estimand": "cycle-local decision quality vs recorded simulator truth: among cycles with a flag shown, fractions with recorded remaining life in-window (0 < RUL <= horizon), early (RUL > horizon), and after failure (RUL <= 0); among unflagged cycles, fractions correct (RUL > horizon), in-window (0 < RUL <= horizon), and after failure. Equal-unit averages with unit-bootstrap 95% CIs. Descriptive statistics on correlated simulator data - NOT first-alert policy effectiveness; separate from the scoreboard's latched unit classification; simulator truth only; imported units excluded.",
+ "horizon": 30,
+ "policy": "v1_q50",
+ "units": 15,
+ "flag_in_window_equal_unit": 0.909199874381576,
+ "flag_in_window_ci": [
+  0.8705432305438178,
+  0.9424831029764038
+ ],
+ "flag_early_equal_unit": 0.056537136753855015,
+ "flag_after_failure_equal_unit": 0.034262988864568876,
+ "noflag_correct_equal_unit": 0.9823172122179209,
+ "noflag_in_window_equal_unit": 0.017682787782079195,
+ "noflag_after_failure_equal_unit": 0.0,
+ "per_unit": {
+  "4": {
+   "n_cycles": 189,
+   "n_flagged": 25,
+   "flag_in_window_frac": 0.96,
+   "flag_early_frac": 0.0,
+   "flag_after_failure_frac": 0.04,
+   "noflag_correct_frac": 0.9634146341463414,
+   "noflag_in_window_frac": 0.036585365853658534,
+   "noflag_after_failure_frac": 0.0
+  },
+  "5": {
+   "n_cycles": 269,
+   "n_flagged": 34,
+   "flag_in_window_frac": 0.8823529411764706,
+   "flag_early_frac": 0.08823529411764706,
+   "flag_after_failure_frac": 0.029411764705882353,
+   "noflag_correct_frac": 1.0,
+   "noflag_in_window_frac": 0.0,
+   "noflag_after_failure_frac": 0.0
+  },
+  "7": {
+   "n_cycles": 259,
+   "n_flagged": 33,
+   "flag_in_window_frac": 0.8787878787878788,
+   "flag_early_frac": 0.09090909090909091,
+   "flag_after_failure_frac": 0.030303030303030304,
+   "noflag_correct_frac": 0.995575221238938,
+   "noflag_in_window_frac": 0.004424778761061947,
+   "noflag_after_failure_frac": 0.0
+  },
+  "30": {
+   "n_cycles": 194,
+   "n_flagged": 30,
+   "flag_in_window_frac": 0.9666666666666667,
+   "flag_early_frac": 0.0,
+   "flag_after_failure_frac": 0.03333333333333333,
+   "noflag_correct_frac": 0.9939024390243902,
+   "noflag_in_window_frac": 0.006097560975609756,
+   "noflag_after_failure_frac": 0.0
+  },
+  "45": {
+   "n_cycles": 158,
+   "n_flagged": 24,
+   "flag_in_window_frac": 0.9583333333333334,
+   "flag_early_frac": 0.0,
+   "flag_after_failure_frac": 0.041666666666666664,
+   "noflag_correct_frac": 0.9477611940298507,
+   "noflag_in_window_frac": 0.05223880597014925,
+   "noflag_after_failure_frac": 0.0
+  },
+  "46": {
+   "n_cycles": 256,
+   "n_flagged": 28,
+   "flag_in_window_frac": 0.9285714285714286,
+   "flag_early_frac": 0.03571428571428571,
+   "flag_after_failure_frac": 0.03571428571428571,
+   "noflag_correct_frac": 0.9824561403508771,
+   "noflag_in_window_frac": 0.017543859649122806,
+   "noflag_after_failure_frac": 0.0
+  },
+  "51": {
+   "n_cycles": 213,
+   "n_flagged": 29,
+   "flag_in_window_frac": 0.9655172413793104,
+   "flag_early_frac": 0.0,
+   "flag_after_failure_frac": 0.034482758620689655,
+   "noflag_correct_frac": 0.9891304347826086,
+   "noflag_in_window_frac": 0.010869565217391304,
+   "noflag_after_failure_frac": 0.0
+  },
+  "59": {
+   "n_cycles": 231,
+   "n_flagged": 29,
+   "flag_in_window_frac": 0.9655172413793104,
+   "flag_early_frac": 0.0,
+   "flag_after_failure_frac": 0.034482758620689655,
+   "noflag_correct_frac": 0.9900990099009901,
+   "noflag_in_window_frac": 0.009900990099009901,
+   "noflag_after_failure_frac": 0.0
+  },
+  "60": {
+   "n_cycles": 172,
+   "n_flagged": 38,
+   "flag_in_window_frac": 0.7631578947368421,
+   "flag_early_frac": 0.21052631578947367,
+   "flag_after_failure_frac": 0.02631578947368421,
+   "noflag_correct_frac": 0.9925373134328358,
+   "noflag_in_window_frac": 0.007462686567164179,
+   "noflag_after_failure_frac": 0.0
+  },
+  "73": {
+   "n_cycles": 213,
+   "n_flagged": 39,
+   "flag_in_window_frac": 0.7692307692307693,
+   "flag_early_frac": 0.20512820512820512,
+   "flag_after_failure_frac": 0.02564102564102564,
+   "noflag_correct_frac": 1.0,
+   "noflag_in_window_frac": 0.0,
+   "noflag_after_failure_frac": 0.0
+  },
+  "77": {
+   "n_cycles": 154,
+   "n_flagged": 26,
+   "flag_in_window_frac": 0.9615384615384616,
+   "flag_early_frac": 0.0,
+   "flag_after_failure_frac": 0.038461538461538464,
+   "noflag_correct_frac": 0.9609375,
+   "noflag_in_window_frac": 0.0390625,
+   "noflag_after_failure_frac": 0.0
+  },
+  "79": {
+   "n_cycles": 199,
+   "n_flagged": 20,
+   "flag_in_window_frac": 0.95,
+   "flag_early_frac": 0.0,
+   "flag_after_failure_frac": 0.05,
+   "noflag_correct_frac": 0.9385474860335196,
+   "noflag_in_window_frac": 0.061452513966480445,
+   "noflag_after_failure_frac": 0.0
+  },
+  "82": {
+   "n_cycles": 214,
+   "n_flagged": 30,
+   "flag_in_window_frac": 0.9333333333333333,
+   "flag_early_frac": 0.03333333333333333,
+   "flag_after_failure_frac": 0.03333333333333333,
+   "noflag_correct_frac": 0.9891304347826086,
+   "noflag_in_window_frac": 0.010869565217391304,
+   "noflag_after_failure_frac": 0.0
+  },
+  "94": {
+   "n_cycles": 258,
+   "n_flagged": 29,
+   "flag_in_window_frac": 0.9655172413793104,
+   "flag_early_frac": 0.0,
+   "flag_after_failure_frac": 0.034482758620689655,
+   "noflag_correct_frac": 0.9912663755458515,
+   "noflag_in_window_frac": 0.008733624454148471,
+   "noflag_after_failure_frac": 0.0
+  },
+  "100": {
+   "n_cycles": 200,
+   "n_flagged": 38,
+   "flag_in_window_frac": 0.7894736842105263,
+   "flag_early_frac": 0.18421052631578946,
+   "flag_after_failure_frac": 0.02631578947368421,
+   "noflag_correct_frac": 1.0,
+   "noflag_in_window_frac": 0.0,
+   "noflag_after_failure_frac": 0.0
+  }
+ },
+ "v1_policy": "v1_q50",
+ "v2_policy": "q90",
+ "v2": {
+  "estimand": "cycle-local decision quality vs recorded simulator truth: among cycles with a flag shown, fractions with recorded remaining life in-window (0 < RUL <= horizon), early (RUL > horizon), and after failure (RUL <= 0); among unflagged cycles, fractions correct (RUL > horizon), in-window (0 < RUL <= horizon), and after failure. Equal-unit averages with unit-bootstrap 95% CIs. Descriptive statistics on correlated simulator data - NOT first-alert policy effectiveness; separate from the scoreboard's latched unit classification; simulator truth only; imported units excluded.",
+  "horizon": 30,
+  "policy": "q90",
+  "units": 15,
+  "flag_in_window_equal_unit": 0.9330984274179304,
+  "flag_in_window_ci": [
+   0.9104179031496702,
+   0.9512185452275126
+  ],
+  "flag_early_equal_unit": 0.022730933698675633,
+  "flag_after_failure_equal_unit": 0.04417063888339386,
+  "noflag_correct_equal_unit": 0.9567005753799673,
+  "noflag_in_window_equal_unit": 0.0432994246200328,
+  "noflag_after_failure_equal_unit": 0.0,
+  "per_unit": {
+   "4": {
+    "n_cycles": 189,
+    "n_flagged": 23,
+    "flag_in_window_frac": 0.9565217391304348,
+    "flag_early_frac": 0.0,
+    "flag_after_failure_frac": 0.043478260869565216,
+    "noflag_correct_frac": 0.9518072289156626,
+    "noflag_in_window_frac": 0.04819277108433735,
+    "noflag_after_failure_frac": 0.0
+   },
+   "5": {
+    "n_cycles": 269,
+    "n_flagged": 28,
+    "flag_in_window_frac": 0.9642857142857143,
+    "flag_early_frac": 0.0,
+    "flag_after_failure_frac": 0.03571428571428571,
+    "noflag_correct_frac": 0.9875518672199171,
+    "noflag_in_window_frac": 0.012448132780082987,
+    "noflag_after_failure_frac": 0.0
+   },
+   "7": {
+    "n_cycles": 259,
+    "n_flagged": 31,
+    "flag_in_window_frac": 0.9032258064516129,
+    "flag_early_frac": 0.06451612903225806,
+    "flag_after_failure_frac": 0.03225806451612903,
+    "noflag_correct_frac": 0.9912280701754386,
+    "noflag_in_window_frac": 0.008771929824561403,
+    "noflag_after_failure_frac": 0.0
+   },
+   "30": {
+    "n_cycles": 194,
+    "n_flagged": 18,
+    "flag_in_window_frac": 0.9444444444444444,
+    "flag_early_frac": 0.0,
+    "flag_after_failure_frac": 0.05555555555555555,
+    "noflag_correct_frac": 0.9261363636363636,
+    "noflag_in_window_frac": 0.07386363636363637,
+    "noflag_after_failure_frac": 0.0
+   },
+   "45": {
+    "n_cycles": 158,
+    "n_flagged": 20,
+    "flag_in_window_frac": 0.95,
+    "flag_early_frac": 0.0,
+    "flag_after_failure_frac": 0.05,
+    "noflag_correct_frac": 0.9202898550724637,
+    "noflag_in_window_frac": 0.07971014492753623,
+    "noflag_after_failure_frac": 0.0
+   },
+   "46": {
+    "n_cycles": 256,
+    "n_flagged": 20,
+    "flag_in_window_frac": 0.95,
+    "flag_early_frac": 0.0,
+    "flag_after_failure_frac": 0.05,
+    "noflag_correct_frac": 0.9533898305084746,
+    "noflag_in_window_frac": 0.046610169491525424,
+    "noflag_after_failure_frac": 0.0
+   },
+   "51": {
+    "n_cycles": 213,
+    "n_flagged": 18,
+    "flag_in_window_frac": 0.9444444444444444,
+    "flag_early_frac": 0.0,
+    "flag_after_failure_frac": 0.05555555555555555,
+    "noflag_correct_frac": 0.9333333333333333,
+    "noflag_in_window_frac": 0.06666666666666667,
+    "noflag_after_failure_frac": 0.0
+   },
+   "59": {
+    "n_cycles": 231,
+    "n_flagged": 20,
+    "flag_in_window_frac": 0.95,
+    "flag_early_frac": 0.0,
+    "flag_after_failure_frac": 0.05,
+    "noflag_correct_frac": 0.9478672985781991,
+    "noflag_in_window_frac": 0.052132701421800945,
+    "noflag_after_failure_frac": 0.0
+   },
+   "60": {
+    "n_cycles": 172,
+    "n_flagged": 29,
+    "flag_in_window_frac": 0.9655172413793104,
+    "flag_early_frac": 0.0,
+    "flag_after_failure_frac": 0.034482758620689655,
+    "noflag_correct_frac": 0.986013986013986,
+    "noflag_in_window_frac": 0.013986013986013986,
+    "noflag_after_failure_frac": 0.0
+   },
+   "73": {
+    "n_cycles": 213,
+    "n_flagged": 37,
+    "flag_in_window_frac": 0.8108108108108109,
+    "flag_early_frac": 0.16216216216216217,
+    "flag_after_failure_frac": 0.02702702702702703,
+    "noflag_correct_frac": 1.0,
+    "noflag_in_window_frac": 0.0,
+    "noflag_after_failure_frac": 0.0
+   },
+   "77": {
+    "n_cycles": 154,
+    "n_flagged": 17,
+    "flag_in_window_frac": 0.9411764705882353,
+    "flag_early_frac": 0.0,
+    "flag_after_failure_frac": 0.058823529411764705,
+    "noflag_correct_frac": 0.8978102189781022,
+    "noflag_in_window_frac": 0.10218978102189781,
+    "noflag_after_failure_frac": 0.0
+   },
+   "79": {
+    "n_cycles": 199,
+    "n_flagged": 19,
+    "flag_in_window_frac": 0.9473684210526315,
+    "flag_early_frac": 0.0,
+    "flag_after_failure_frac": 0.05263157894736842,
+    "noflag_correct_frac": 0.9333333333333333,
+    "noflag_in_window_frac": 0.06666666666666667,
+    "noflag_after_failure_frac": 0.0
+   },
+   "82": {
+    "n_cycles": 214,
+    "n_flagged": 20,
+    "flag_in_window_frac": 0.95,
+    "flag_early_frac": 0.0,
+    "flag_after_failure_frac": 0.05,
+    "noflag_correct_frac": 0.9432989690721649,
+    "noflag_in_window_frac": 0.05670103092783505,
+    "noflag_after_failure_frac": 0.0
+   },
+   "94": {
+    "n_cycles": 258,
+    "n_flagged": 26,
+    "flag_in_window_frac": 0.9615384615384616,
+    "flag_early_frac": 0.0,
+    "flag_after_failure_frac": 0.038461538461538464,
+    "noflag_correct_frac": 0.978448275862069,
+    "noflag_in_window_frac": 0.021551724137931036,
+    "noflag_after_failure_frac": 0.0
+   },
+   "100": {
+    "n_cycles": 200,
+    "n_flagged": 35,
+    "flag_in_window_frac": 0.8571428571428571,
+    "flag_early_frac": 0.11428571428571428,
+    "flag_after_failure_frac": 0.02857142857142857,
+    "noflag_correct_frac": 1.0,
+    "noflag_in_window_frac": 0.0,
+    "noflag_after_failure_frac": 0.0
+   }
+  },
+  "post_hoc": "v2 policy selected after v1 results were known; exploratory"
+ },
+ "source_sha256": "0511a2cb9f845c19",
+ "source": "results/replay_FD001.pkl (frozen predictions)"
+}

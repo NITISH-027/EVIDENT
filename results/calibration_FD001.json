@@ -1,0 +1,25 @@
+{
+ "method": "empirical split-conformal-style calibration on tune rows",
+ "nominal": 0.8,
+ "global_offset": 6.072797205704852,
+ "stratified_offsets": {
+  "0-30": {
+   "n": 478,
+   "offset": 1.6499909313406782
+  },
+  "31-75": {
+   "n": 516,
+   "offset": 5.130469375889987
+  },
+  "76-130": {
+   "n": 925,
+   "offset": 7.2778586258538525
+  },
+  ">130": {
+   "n": 1084,
+   "offset": 17.310780011169385
+  }
+ },
+ "n_tune_rows": 3003,
+ "caveat": "no coverage guarantee: calibration shares the tune split with v1 hyperparameter selection; all coverage numbers are empirical measurements on named splits, not guaranteed rates"
+}

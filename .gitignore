@@ -1,0 +1,23 @@
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+.venv/
+env/
+venv/
+ENV/
+
+# Testing & coverage
+.pytest_cache/
+*.log
+
+# Runtime audit log and user review notes
+results/audit.jsonl
+results/review_notes.jsonl
+
+# OS artifacts
+.DS_Store
+Thumbs.db

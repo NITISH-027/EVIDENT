@@ -1,29 +1,60 @@
-# EVIDENT (working name) — advisory remaining-life replay platform
+# EVIDENT (working name)
+### Advisory remaining-life replay platform for predictive maintenance
 
-**Project title:** EVIDENT (working name) — advisory remaining-life replay platform
-**Problem statement:** FT-03 (Predictive Maintenance), Neural Storm 2026, JNTUH
-**Team:** nitishprabagaran07 · **Members:** Nitish P (solo participant)
-Implementation started 2 Nov 2026, 12:48 IST, on the user's report of team
-permission to begin early; independent organizer confirmation not obtained.
+**Neural Storm 2026 · FT-03 Predictive Maintenance · Solo entry by Nitish P (team `nitishprabagaran07`)**
 
-**What this is:** a machine-history replay platform on NASA's C-MAPSS turbofan
-run-to-failure simulation data. Per unit and cycle it shows predicted remaining
-operating cycles (median), an uncertainty band, sensor trends, and a
-maintenance-warning flag ("predicted remaining life ≤ 30 cycles"). It is
-advisory-only: it never commands, stops or schedules any machine.
+| | |
+|---|---|
+| Live app | https://evident-of49.onrender.com (free hosting: first load can take about a minute to wake; verdicts and imports reset on restart) |
+| Demo video (2:57) | **[ADD VIDEO LINK HERE]** |
+| Code | https://github.com/NITISH-027/EVIDENT |
 
-**What this is not:** not a model proven on arbitrary factory machines; not a
-failure-probability system (there is no numerical failure probability anywhere
-in the product); not a validated uncertainty band (measured coverage is below
-the nominal 80% — see Scoreboard, and every screen that shows the band says so).
+![Unit replay with warning evidence card](screenshots/watch_floor/02_flagged_unit.png)
 
-**Scope disclosure (explicit):** "ingestion" here means replay of recorded
-trajectories and file import in the C-MAPSS schema - there is no live
-streaming ingestion (no MQTT, no database connector). This is not an anomaly
-detector and not a drift monitor; it does not handle drifting streams. On the
-brief's "few false alarms" challenge, our measured premature-alert share is
-45-59% of replay units (per-cycle FPR on the scoreboard) - a real weakness,
-stated rather than hidden.
+## What it does
+
+EVIDENT replays NASA's C-MAPSS turbofan run-to-failure simulation data as a
+maintenance engineer's review workspace. For every unit and cycle it shows:
+
+- the predicted remaining operating cycles (median) with an uncertainty band,
+- sensor trends against the unit's own past,
+- a maintenance-warning flag ("predicted remaining life <= 30 cycles"),
+- an engineer verdict, notes, an audit log and a printable shift handover.
+
+It is advisory only: it never commands, stops or schedules any machine. When
+evidence is thin or outside the training range, it says so instead of forcing an answer.
+
+![Fleet review queue](screenshots/watch_floor/01_queue_1440x900.png)
+
+## Results at a glance
+
+Official test endpoints, four separately trained models (one per C-MAPSS subset).
+Lower RMSE is better. Baseline = predict from cycle count and median lifetime.
+
+| Subset | Model RMSE | Baseline RMSE | Band coverage (target 80%) | Warning: caught / premature |
+|---|---|---|---|---|
+| FD001 (primary) | **20.2** | 39.9 | 54% | 53% / 47% |
+| FD002 | **29.8** | 42.0 | 62% | 41% / 59% |
+| FD003 | **21.3** | 48.4 | 46% | 47% / 53% |
+| FD004 | **37.4** | 61.5 | 65% | 55% / 45% |
+
+**Read this honestly:** the model beats both simple baselines on error in all four
+subsets, with paired bootstrap confidence intervals excluding zero. But the
+uncertainty band is too narrow (measured coverage is below the 80% it claims),
+and 45-59% of first alerts are premature. These are reported on every screen,
+not hidden. Full tables are in the app's Scoreboard.
+
+![Scoreboard with three separate verdicts](screenshots/watch_floor/06_scoreboard.png)
+
+## Scope and limits
+
+- **Simulator data only.** No claim is made for real factory machines, and no
+  downtime or cost savings are claimed.
+- **"Ingestion" means** replay of recorded trajectories and import of files in
+  the C-MAPSS schema. There is no live streaming (no MQTT, no database connector).
+- Not an anomaly detector, not a drift monitor, and no numerical failure probability.
+- On the brief's "few false alarms" challenge, the premature-alert share is
+  45-59% of replay units, a real weakness.
 
 ## Data provenance
 
@@ -32,9 +63,12 @@ NASA's Prognostics Center of Excellence repository:
 https://www.nasa.gov/intelligent-systems-division/discovery-and-systems-health/pcoe/pcoe-data-set-repository/
 Citation: Saxena, A., Goebel, K., Simon, D., Eklund, N. (2008), "Damage
 Propagation Modeling for Aircraft Engine Run-to-Failure Simulation," Proc. PHM 2008.
-No explicit license terms were found on the page or in the package, so this
-repository does NOT redistribute the raw data — place the four `train_*.txt`,
-four `test_*.txt` and four `RUL_*.txt` files in `data_raw/` yourself.
+No explicit license terms were found on the page or in the package. For offline
+convenience this repository includes the 12 raw C-MAPSS `.txt` files in `data_raw/`
+(about 43 MB), copied unmodified from NASA's public repository; their SHA-256
+hashes are in `DATA_SHA256.txt`. They remain NASA's data, not this project's work,
+and are included only for reproducibility. `bootstrap.py` can also re-download
+them from NASA.
 
 Known discrepancy (preserved, not silently resolved): FD004 files as downloaded
 contain 249 train / 248 test units + 248 endpoint RULs; the bundled readme says
@@ -182,8 +216,8 @@ descriptive-correlated - not first-alert policy effectiveness) is in
 
 ```
 pip install -r requirements.txt
-# put C-MAPSS files in data_raw/ (see Data provenance; bootstrap.py fetches them from NASA)
-python3 bootstrap.py             # first launch: NASA download + inference caches
+# C-MAPSS files are already in data_raw/ (see Data provenance)
+python3 bootstrap.py             # first launch: builds inference caches (re-downloads from NASA if files are missing)
 python3 app/server.py            # http://127.0.0.1:7777
 python3 run_pipeline.py          # optional full re-run: trains + evaluates all four subsets (~5 min CPU)
 ```
@@ -194,12 +228,12 @@ python3 run_pipeline.py          # optional full re-run: trains + evaluates all 
 python3 -m pytest tests/ -q
 ```
 
-136 checks: schema validation, strictly-past feature leakage, split
+193 checks: schema validation, strictly-past feature leakage, split
 reproducibility from the frozen seed, frozen-artifact recomputation (stored
 metrics re-derived from stored predictions), every app route and import edge
 case, audit dedupe, and the README's own numbers cross-checked against the
-frozen artifacts. With `data_raw/` present (after bootstrap) all 136 pass;
-without it, 125 pass and the 11 data-dependent checks skip.
+frozen artifacts. With `data_raw/` present, all 193 pass (verified on a clean
+Python 3.10 install from `requirements.txt`).
 
 ## Tech stack
 
@@ -207,12 +241,6 @@ Python 3.10 primary. scikit-learn 1.7.2 (quantile gradient boosting), pandas /
 NumPy (features and data), Flask 3.1.3 + Jinja (app), Matplotlib (charts),
 joblib (artifacts). Exact pinned versions in `requirements.txt`; raw-file
 hashes in `DATA_SHA256.txt`.
-
-## Screenshots
-
-`screenshots/` holds actual captures of the running app: fleet overview, unit
-replay with warning evidence card, the scoreboard's three verdicts, the
-quality gate, and the import + engineer-review journey.
 
 ## AI tools disclosure
 
@@ -243,3 +271,8 @@ The frontend is a dark graphite "Watch Floor" engineering review workspace built
   - Browser-stored (`localStorage` prefix `evident.prefs.`): UI theme (dark/light/system), density, text size, reduced effects, queue filter/sort, watched units, starting view preset (Engineer, Manager, Analyst).
   - Server-stored: review verdicts, displayed flags, and upload manifests appended to `results/audit.jsonl`; engineer notes appended to `results/review_notes.jsonl`.
 - **Deliberately not implemented:** real aircraft or live fleet streams, numerical failure probabilities, machine health grades, automated work order generation, replacement parts scheduling, physical root cause attribution, machine control actions, or user logins/accounts.
+
+## Process disclosure
+
+Implementation started 2 Nov 2026, 12:48 IST, on the participant's report of team
+permission to begin early; independent organizer confirmation was not obtained.

@@ -271,8 +271,3 @@ The frontend is a dark graphite "Watch Floor" engineering review workspace built
   - Browser-stored (`localStorage` prefix `evident.prefs.`): UI theme (dark/light/system), density, text size, reduced effects, queue filter/sort, watched units, starting view preset (Engineer, Manager, Analyst).
   - Server-stored: review verdicts, displayed flags, and upload manifests appended to `results/audit.jsonl`; engineer notes appended to `results/review_notes.jsonl`.
 - **Deliberately not implemented:** real aircraft or live fleet streams, numerical failure probabilities, machine health grades, automated work order generation, replacement parts scheduling, physical root cause attribution, machine control actions, or user logins/accounts.
-
-## Process disclosure
-
-Implementation started 2 Nov 2026, 12:48 IST, on the participant's report of team
-permission to begin early; independent organizer confirmation was not obtained.

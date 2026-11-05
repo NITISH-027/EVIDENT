@@ -6,7 +6,7 @@
 | | |
 |---|---|
 | Live app | https://evident-of49.onrender.com (free hosting: first load can take about a minute to wake; verdicts and imports reset on restart) |
-| Demo video (2:57) | **[ADD VIDEO LINK HERE]** |
+| Demo video (2:57) | https://drive.google.com/file/d/1Pjsg7cn0jxCB7I-dJJ41QuYn8oDXJHOs/view?usp=drivesdk |
 | Code | https://github.com/NITISH-027/EVIDENT |
 
 ![Unit replay with warning evidence card](screenshots/watch_floor/02_flagged_unit.png)
